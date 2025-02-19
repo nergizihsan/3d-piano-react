@@ -1,6 +1,7 @@
 import { Controls } from "@/components/controls"
 import { Button } from "@/components/ui/button"
 import { Settings } from "lucide-react"
+import { OctaveIndicator } from "@/components/octave-indicator"
 
 interface PianoLayoutProps {
   children: React.ReactNode
@@ -18,6 +19,7 @@ export function PianoLayout({ children, onOpenShortcuts }: PianoLayoutProps) {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <OctaveIndicator />
           <Button
             variant="ghost"
             size="icon"

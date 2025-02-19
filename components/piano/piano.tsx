@@ -8,7 +8,7 @@ import { PIANO_DIMENSIONS } from '@/constants/piano'
 import { generatePianoKeys } from '@/utils/piano-utils'
 
 export function Piano() {
-  const { playNote } = usePianoAudio()
+  const { playNote, releaseNote } = usePianoAudio()
   const { pressedKeys, pressKey, releaseKey } = useAudioStore()
   const KEYS = generatePianoKeys(PIANO_DIMENSIONS)
   
@@ -17,7 +17,11 @@ export function Piano() {
   const handleKeyPress = (note: string) => {
     playNote(note)
     pressKey(note)
-    setTimeout(() => releaseKey(note), 200)
+  }
+
+  const handleKeyRelease = (note: string) => {
+    releaseNote(note)
+    releaseKey(note)
   }
 
   return (
@@ -31,6 +35,7 @@ export function Piano() {
             position={key.position}
             isPressed={pressedKeys.includes(key.note)}
             onPress={() => handleKeyPress(key.note)}
+            onRelease={() => handleKeyRelease(key.note)}
           />
         ))}
       </group>

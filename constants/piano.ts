@@ -26,12 +26,26 @@ export const PIANO_PHYSICS = {
 }
 
 export const PIANO_CAMERA = {
-  INITIAL_POSITION: [0, 3, 5] as const,
-  FOV: 45,
-  MIN_POLAR_ANGLE: Math.PI / 4,
-  MAX_POLAR_ANGLE: Math.PI / 2,
-  MIN_DISTANCE: 3,
-  MAX_DISTANCE: 7
+  // Starting position [x, y, z]
+  // x: left/right (0 = centered)
+  // y: height above piano (higher = looking down more)
+  // z: distance from piano (higher = further away)
+  INITIAL_POSITION: [0, 3, 5] as const,  // Changed from [0, 3, 5]
+
+  // Field of view in degrees (higher = wider angle)
+  FOV: 45, 
+
+  // Minimum angle user can rotate camera down from horizontal
+  MIN_POLAR_ANGLE: Math.PI / 6, 
+
+  // Maximum angle user can rotate camera up
+  MAX_POLAR_ANGLE: Math.PI / 1.8, 
+
+  // How close user can zoom in
+  MIN_DISTANCE: 4,  
+
+  // How far user can zoom out
+  MAX_DISTANCE: 8  
 }
 
 export const WEBGL_SETTINGS = {
@@ -52,4 +66,10 @@ export const PIANO_MATERIALS = {
     ROUGHNESS: 0.8,
     COLOR: '#ffffff'
   }
-} 
+}
+
+export const PIANO_DEFAULTS = {
+  MIN_OCTAVE: 0,
+  MAX_OCTAVE: 7,
+  DEFAULT_OCTAVE: 4,  // Changed from 3 to 4 to align with standard piano middle C
+} as const 

@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { PIANO_DEFAULTS } from '@/constants/piano'
+import { useLayoutEffect } from 'react'
 
 interface AudioStore {
   volume: number
@@ -10,6 +12,9 @@ interface AudioStore {
   releaseKey: (note: string) => void
   isSceneLocked: boolean
   toggleSceneLock: () => void
+  clearPressedKeys: () => void
+  currentOctave: number
+  setCurrentOctave: (octave: number) => void
 }
 
 export const useAudioStore = create<AudioStore>((set) => ({
@@ -27,5 +32,27 @@ export const useAudioStore = create<AudioStore>((set) => ({
     pressedKeys: state.pressedKeys.filter(key => key !== note)
   })),
   isSceneLocked: false,
-  toggleSceneLock: () => set((state) => ({ isSceneLocked: !state.isSceneLocked }))
-})) 
+  toggleSceneLock: () => set((state) => ({ isSceneLocked: !state.isSceneLocked })),
+  clearPressedKeys: () => set({ pressedKeys: [] }),
+  currentOctave: PIANO_DEFAULTS.DEFAULT_OCTAVE,  // Start with default
+  setCurrentOctave: (octave) => {
+    const newOctave = Math.max(
+      PIANO_DEFAULTS.MIN_OCTAVE,
+      Math.min(PIANO_DEFAULTS.MAX_OCTAVE, octave)
+    )
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('piano-octave', String(newOctave))
+    }
+    set({ currentOctave: newOctave })
+  },
+}))
+
+// Initialize octave from localStorage in a component
+export function useInitializeAudioStore() {
+  useLayoutEffect(() => {
+    const saved = localStorage.getItem('piano-octave')
+    if (saved) {
+      useAudioStore.getState().setCurrentOctave(Number(saved))
+    }
+  }, [])
+} 

@@ -5,7 +5,7 @@ import { ThreeEvent } from '@react-three/fiber'
 import { PianoKeyProps } from '@/types/piano'
 import { PIANO_PHYSICS, PIANO_DIMENSIONS } from '@/constants/piano'
 
-export function PianoKey({ note, type, position, isPressed, onPress }: PianoKeyProps) {
+export function PianoKey({ note, type, position, isPressed, onPress, onRelease }: PianoKeyProps) {
   const meshRef = useRef<THREE.Mesh>(null)
   const groupRef = useRef<THREE.Group>(null)
   
@@ -41,9 +41,31 @@ export function PianoKey({ note, type, position, isPressed, onPress }: PianoKeyP
       }
     : null
 
+  const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation()
+    onPress?.()
+  }
+
+  const handlePointerUp = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation()
+    onRelease?.()
+  }
+
+  const handlePointerLeave = (event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation()
+    if (isPressed) {
+      onRelease?.()
+    }
+  }
+
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation()
     onPress?.()
+    
+    // Add release after a short delay
+    setTimeout(() => {
+      onRelease?.()
+    }, 200)
   }
 
   return (
@@ -56,7 +78,9 @@ export function PianoKey({ note, type, position, isPressed, onPress }: PianoKeyP
       {type === 'black' && hitboxDimensions && (
         <mesh
           position={[0, 0, -PIANO_PHYSICS.PIVOT_POINT]}
-          onClick={handleClick}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerLeave}
         >
           <boxGeometry 
             args={[
@@ -73,7 +97,9 @@ export function PianoKey({ note, type, position, isPressed, onPress }: PianoKeyP
       <mesh
         ref={meshRef}
         position={[0, type === 'black' ? dimensions.height / 5 : 0, -PIANO_PHYSICS.PIVOT_POINT]}
-        onClick={type === 'white' ? handleClick : undefined}
+        onPointerDown={type === 'white' ? handlePointerDown : undefined}
+        onPointerUp={type === 'white' ? handlePointerUp : undefined}
+        onPointerLeave={type === 'white' ? handlePointerLeave : undefined}
         receiveShadow
         castShadow
       >

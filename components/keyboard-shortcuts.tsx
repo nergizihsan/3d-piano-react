@@ -6,8 +6,13 @@ import {
 } from "@/components/ui/dialog"
 
 const PIANO_SHORTCUTS = [
-  { key: "A S D F G H J", description: "White keys (C through B)" },
-  { key: "W E T Y U", description: "Black keys (C# through A#)" },
+  { key: "Z X C V B N M", description: "Lower octave white keys" },
+  { key: "1 2 3 4 5", description: "Lower octave black keys" },
+  { key: "A S D F G H J", description: "Middle octave white keys" },
+  { key: "W E T Y U", description: "Middle octave black keys" },
+  { key: "K L ; ' \\", description: "Upper octave white keys" },
+  { key: "O P ] ", description: "Upper octave black keys" },
+  { key: ", .", description: "Shift octave down/up" },
 ]
 
 interface KeyboardShortcutsProps {

@@ -12,4 +12,5 @@ export interface PianoKeyProps {
   position: [number, number, number]
   isPressed?: boolean
   onPress?: () => void
+  onRelease?: () => void
 } 
