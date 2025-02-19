@@ -8,12 +8,17 @@ const getAudioFormat = () => {
   return audio.canPlayType('audio/ogg') ? 'ogg' : 'mp3'
 }
 
+interface NoteData {
+  startTime: number
+  velocity: number
+}
+
 export function usePianoAudio() {
   const sampler = useRef<Tone.Sampler>()
   const reverb = useRef<Tone.Reverb>()
   const compressor = useRef<Tone.Compressor>()
   const eq = useRef<Tone.EQ3>()
-  const activeNotes = useRef<Record<string, number>>({})
+  const activeNotes = useRef<Record<string, NoteData>>({})
   const { volume, setIsReady } = useAudioStore()
   const [isLoaded, setIsLoaded] = useState(false)
   const audioFormat = getAudioFormat()
@@ -108,13 +113,14 @@ export function usePianoAudio() {
 
     try {
       await Tone.start()
-      // Remove the octave forcing - use the note as is
       const fullNote = note
       
-      // Store the time when the note started
-      activeNotes.current[fullNote] = Tone.now()
+      // Store both start time and initial velocity
+      activeNotes.current[fullNote] = {
+        startTime: Tone.now(),
+        velocity: 0.8  // Initial attack velocity
+      }
       
-      // Attack with full velocity
       sampler.current.triggerAttack(fullNote, undefined, 0.8)
     } catch (error) {
       console.error('Error playing note:', error)
@@ -124,15 +130,21 @@ export function usePianoAudio() {
   const releaseNote = (note: string) => {
     if (!sampler.current || !isLoaded) return
     
-    // Remove the octave forcing here too
     const fullNote = note
+    const noteData = activeNotes.current[fullNote]
+    if (!noteData) return
+
+    const holdDuration = Tone.now() - noteData.startTime
     
-    // Calculate how long the note was held
-    const noteStartTime = activeNotes.current[fullNote]
-    const holdDuration = Tone.now() - noteStartTime
+    // Calculate release velocity based on hold duration
+    // Shorter holds (< 0.1s) = quick release (0.8)
+    // Longer holds (> 2s) = gentle release (0.2)
+    const releaseTime = Math.max(0.1, 
+      0.1 + (Math.min(holdDuration, 2) * 0.2)
+    )
     
-    // Release the note
-    sampler.current.triggerRelease(fullNote)
+    // Use release time instead of velocity for the envelope
+    sampler.current.triggerRelease(fullNote, Tone.now() + releaseTime)
     delete activeNotes.current[fullNote]
   }
 

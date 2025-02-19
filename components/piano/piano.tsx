@@ -1,5 +1,6 @@
 "use client"
 
+import { useCallback } from 'react'
 import { usePianoAudio } from '@/hooks/use-piano-audio'
 import { useAudioStore } from '@/stores/audio-store'
 import { usePianoKeyboard } from '@/hooks/use-piano-keyboard'
@@ -14,15 +15,15 @@ export function Piano() {
   
   usePianoKeyboard()
 
-  const handleKeyPress = (note: string) => {
+  const handleKeyPress = useCallback((note: string) => {
     playNote(note)
     pressKey(note)
-  }
+  }, [playNote, pressKey])
 
-  const handleKeyRelease = (note: string) => {
+  const handleKeyRelease = useCallback((note: string) => {
     releaseNote(note)
     releaseKey(note)
-  }
+  }, [releaseNote, releaseKey])
 
   return (
     <group rotation={[0, Math.PI, 0]}>
