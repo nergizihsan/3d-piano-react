@@ -1,6 +1,7 @@
 // src/hooks/use-piano-keyboard.ts
 import { useEffect } from 'react'
-import { usePianoAudio } from './use-piano-audio'
+import { usePianoAudio } from '@/hooks/use-piano-audio'
+import { useAudioStore } from '@/stores/audio-store'
 
 const KEY_MAPPINGS = {
   'a': 'C',
@@ -19,22 +20,38 @@ const KEY_MAPPINGS = {
 
 export function usePianoKeyboard() {
   const { playNote } = usePianoAudio()
+  const { pressKey, releaseKey } = useAudioStore()
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Prevent repeat triggers when holding key
       if (event.repeat) return
 
-      const note = KEY_MAPPINGS[event.key.toLowerCase() as keyof typeof KEY_MAPPINGS]
+      const key = event.key.toLowerCase()
+      const note = KEY_MAPPINGS[key as keyof typeof KEY_MAPPINGS]
+      
       if (note) {
+        event.preventDefault()
         playNote(note)
+        pressKey(note)
+      }
+    }
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase()
+      const note = KEY_MAPPINGS[key as keyof typeof KEY_MAPPINGS]
+      
+      if (note) {
+        event.preventDefault()
+        releaseKey(note)
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [playNote])
+    window.addEventListener('keyup', handleKeyUp)
 
-  // Return playNote function for click handling
-  return { playNote }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [playNote, pressKey, releaseKey])
 }
