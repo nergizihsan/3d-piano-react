@@ -33,10 +33,16 @@ import { AUDIO_SETTINGS } from '@/constants/audio'
 
 export function useSongPlayback() {
   const { playNote, releaseNote } = usePianoAudio()
-  const { pressKey, releaseKey } = useAudioStore()
+  const { pressKey, releaseKey, setLoadingState, isReady } = useAudioStore()
   const scheduledEvents = useRef<number[]>([])
   const [isPlaying, setIsPlaying] = useState(false)
   const endCheckInterval = useRef<NodeJS.Timeout | null>(null)
+  const [songLoadingState, setSongLoadingState] = useState({
+    isLoading: false,
+    progress: 0,
+    totalNotes: 0,
+    processedNotes: 0
+  })
   
   const transport = Tone.getTransport()
 
@@ -56,62 +62,105 @@ export function useSongPlayback() {
     }, 100) // Check every 100ms
   }
 
-  const playSong = async (song: PianoSong) => {
-    console.log('Starting playback:', {
-      title: song.title,
-      noteCount: song.notes.length,
-      tempo: song.tempo,
-      duration: song.duration
-    })
+  const prepareSong = async (song: PianoSong): Promise<PianoSong> => {
+    // First check if audio system is ready
+    if (!isReady) {
+      setLoadingState(0, 'Waiting for audio system...')
+      return song
+    }
 
-    // Reset everything
-    stopSong()
-    transport.stop()
-    transport.position = 0
-    await Tone.start()
+    console.log('Preparing song:', song.title)
+    setLoadingState(0, `Loading "${song.title}"...`)
+
+    // Process notes in chunks with loading feedback
+    const chunkSize = 100
+    const processedNotes = []
+    const totalNotes = song.notes.length
     
-    // Set basic parameters with precise tempo handling
-    transport.timeSignature = song.timeSignature
-    transport.bpm.value = song.tempo
+    for (let i = 0; i < totalNotes; i += chunkSize) {
+      const chunk = song.notes.slice(i, i + chunkSize)
+      processedNotes.push(...chunk)
+      
+      // Update global loading state for LoadingBar
+      const progress = Math.min(100, (i + chunk.length) / totalNotes * 100)
+      const notesProcessed = i + chunk.length
+      setLoadingState(
+        progress,
+        `Processing notes: ${notesProcessed}/${totalNotes}`
+      )
+      
+      // Allow UI to update
+      await new Promise(resolve => setTimeout(resolve, 0))
+    }
 
-    // Pre-calculate timing for better accuracy
-    const ticksPerBeat = transport.PPQ // Pulses Per Quarter note
-    const secondsPerTick = (60 / song.tempo) / ticksPerBeat
+    setLoadingState(100, `"${song.title}" ready to play`)
+    
+    return {
+      ...song,
+      notes: processedNotes
+    }
+  }
 
-    // Set context lookAhead to match our audio settings
-    Tone.getContext().lookAhead = AUDIO_SETTINGS.PLAYBACK.LOOK_AHEAD
+  const playSong = async (song: PianoSong) => {
+    try {
+      // Prepare the song first
+      const preparedSong = await prepareSong(song)
+      
+      console.log('Starting playback:', {
+        title: preparedSong.title,
+        noteCount: preparedSong.notes.length,
+        tempo: preparedSong.tempo,
+        duration: preparedSong.duration
+      })
 
-    // Schedule notes with improved timing
-    song.notes.forEach((note, index) => {
-      // Handle consecutive notes more precisely
-      const previousNote = index > 0 ? song.notes[index - 1] : null
-      const needsOffset = previousNote && 
-                         previousNote.name === note.name && 
-                         (note.ticks - previousNote.ticks) < ticksPerBeat / 32
+      // Reset everything
+      stopSong()
+      transport.stop()
+      transport.position = 0
+      await Tone.start()
+      
+      // Set basic parameters
+      transport.timeSignature = preparedSong.timeSignature
+      transport.bpm.value = preparedSong.tempo
 
-      const adjustedStartTicks = needsOffset ? 
-        note.ticks + Math.ceil(ticksPerBeat / 64) : // Minimal offset for repeated notes
-        note.ticks
+      // Pre-calculate timing
+      const ticksPerBeat = transport.PPQ
+      const secondsPerTick = (60 / preparedSong.tempo) / ticksPerBeat
 
-      // Schedule note start with more precise timing
-      const startId = transport.schedule((time) => {
-        playNote(note.name, note.velocity)
-        pressKey(note.name, false, note.velocity)
-      }, `${adjustedStartTicks}i`)
+      // Schedule notes
+      preparedSong.notes.forEach((note, index) => {
+        const previousNote = index > 0 ? preparedSong.notes[index - 1] : null
+        const needsOffset = previousNote && 
+                           previousNote.name === note.name && 
+                           (note.ticks - previousNote.ticks) < ticksPerBeat / 32
 
-      // Schedule note release with precise duration
-      const releaseId = transport.schedule((time) => {
-        releaseNote(note.name)
-        releaseKey(note.name)
-      }, `${adjustedStartTicks + note.durationTicks}i`)
+        const adjustedStartTicks = needsOffset ? 
+          note.ticks + Math.ceil(ticksPerBeat / 64) : 
+          note.ticks
 
-      scheduledEvents.current.push(startId, releaseId)
-    })
+        const startId = transport.schedule((time) => {
+          playNote(note.name, note.velocity)
+          pressKey(note.name, false, note.velocity)
+        }, `${adjustedStartTicks}i`)
 
-    // Start playback
-    setIsPlaying(true)
-    transport.start()
-    checkSongEnd(song.duration)
+        const releaseId = transport.schedule((time) => {
+          releaseNote(note.name)
+          releaseKey(note.name)
+        }, `${adjustedStartTicks + note.durationTicks}i`)
+
+        scheduledEvents.current.push(startId, releaseId)
+      })
+
+      // Start playback
+      setIsPlaying(true)
+      transport.start()
+      checkSongEnd(preparedSong.duration)
+      
+    } catch (error) {
+      console.error('Error playing song:', error)
+      setLoadingState(0, 'Error loading song')
+      stopSong()
+    }
   }
 
   const stopSong = () => {
@@ -155,5 +204,10 @@ export function useSongPlayback() {
     }
   }, [])
 
-  return { playSong, stopSong, isPlaying }
+  return { 
+    playSong, 
+    stopSong, 
+    isPlaying,
+    songLoadingState  // Expose loading state
+  }
 }

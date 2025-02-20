@@ -21,6 +21,9 @@ interface AudioStore {
   cleanupMousePressed: () => void
   pressedKeyColor: string
   setPressedKeyColor: (color: string) => void
+  loadingProgress: number
+  loadingMessage: string
+  setLoadingState: (progress: number, message: string) => void
 }
 
 /**
@@ -95,6 +98,12 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
     }
     set({ pressedKeyColor: color })
   },
+  loadingProgress: 0,
+  loadingMessage: 'Initializing...',
+  setLoadingState: (progress, message) => set({ 
+    loadingProgress: progress, 
+    loadingMessage: message 
+  }),
 }))
 
 // Initialize octave from localStorage in a component

@@ -53,44 +53,68 @@ export function usePianoAudio() {
   const activeNotes = useRef<Record<string, NoteData>>({})
   
   // State management
-  const { volume, setIsReady } = useAudioStore()
+  const { volume, setIsReady, setLoadingState } = useAudioStore()
   const [isLoaded, setIsLoaded] = useState(false)
   const audioFormat = getAudioFormat()
+
+  // Add a ref to track all created nodes
+  const audioNodes = useRef<Tone.ToneAudioNode[]>([])
+
+  const cleanupNodes = () => {
+    audioNodes.current.forEach(node => {
+      if (node) {
+        node.dispose()
+      }
+    })
+    audioNodes.current = []
+  }
 
   useEffect(() => {
     const initSampler = async () => {
       try {
-        // Create audio effects chain
+        setLoadingState(10, 'Initializing audio processor...')
+
+        // Create compressor and track it
         compressor.current = new Tone.Compressor({
           threshold: -20,
           ratio: 3,
           attack: 0.003,
           release: 0.25
         })
+        audioNodes.current.push(compressor.current)
 
+        // Create EQ and track it
         eq.current = new Tone.EQ3({
-          low: -3,    // Reduce muddy frequencies
-          mid: 0,     // Keep mids natural
-          high: 1.5   // Enhance brilliance
+          low: -3,
+          mid: 0,
+          high: 1.5
         })
+        audioNodes.current.push(eq.current)
+
+        setLoadingState(20, 'Setting up audio effects...')
 
         reverb.current = new Tone.Reverb({
           decay: 2.5,
           preDelay: 0.01,
           wet: 0.35
         })
+        audioNodes.current.push(reverb.current)
 
         stringResonance.current = new Tone.Gain(0.2)
+        audioNodes.current.push(stringResonance.current)
+
         resonanceDelay.current = new Tone.FeedbackDelay({
           delayTime: 0.02,
           feedback: 0.2,
           wet: 0.1
         })
+        audioNodes.current.push(resonanceDelay.current)
+
+        setLoadingState(40, 'Loading piano samples...')
 
         // Chain effects: Sampler -> EQ -> Compressor -> Reverb -> Destination
         sampler.current = new Tone.Sampler({
           urls: {
-            // Consider adding more sample points for better interpolation
             'C3': `C3.${audioFormat}`,  // Lower octave
             'C4': `C4.${audioFormat}`,
             'E4': `E4.${audioFormat}`,
@@ -108,9 +132,11 @@ export function usePianoAudio() {
             console.log('Piano samples loaded')
             setIsLoaded(true)
             setIsReady(true)
+            setLoadingState(100, 'Ready!')
           },
           onerror: (error) => {
             console.error('Error loading samples:', error)
+            setLoadingState(0, 'Error loading samples')
           },
         })
         .connect(eq.current)
@@ -120,22 +146,25 @@ export function usePianoAudio() {
         .connect(reverb.current)
         .toDestination()
 
+        setLoadingState(60, 'Configuring audio settings...')
+
         // Pre-configure sampler settings
         sampler.current.volume.value = Tone.gainToDb(volume)
 
         // Cleanup function
         return () => {
-          [sampler.current, reverb.current, compressor.current, eq.current, stringResonance.current, resonanceDelay.current].forEach(node => {
-            if (node) node.dispose()
-          })
+          cleanupNodes()
         }
       } catch (error) {
         console.error('Failed to initialize audio chain:', error)
+        setLoadingState(0, 'Failed to initialize audio')
+        // Clean up any nodes that were created before the error
+        cleanupNodes()
       }
     }
 
     initSampler()
-  }, [audioFormat, setIsReady])
+  }, [audioFormat, setIsReady, setLoadingState, volume])
 
   // Handle volume changes
   useEffect(() => {
@@ -154,7 +183,7 @@ export function usePianoAudio() {
       // Store both start time and initial velocity
       activeNotes.current[fullNote] = {
         startTime: Tone.now(),
-        velocity  // Use the provided velocity
+        velocity
       }
       
       sampler.current.triggerAttack(fullNote, undefined, velocity)

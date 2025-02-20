@@ -30,22 +30,22 @@ export const PIANO_CAMERA = {
   // x: left/right (0 = centered)
   // y: height above piano (higher = looking down more)
   // z: distance from piano (higher = further away)
-  INITIAL_POSITION: [0, 3, 5] as const,  // Changed from [0, 3, 5]
+  INITIAL_POSITION: [0, 4, 6] as const,  // Further back and slightly higher
 
   // Field of view in degrees (higher = wider angle)
   FOV: 45, 
 
   // Minimum angle user can rotate camera down from horizontal
-  MIN_POLAR_ANGLE: Math.PI / 6, 
+  MIN_POLAR_ANGLE: Math.PI / 6,    
 
   // Maximum angle user can rotate camera up
   MAX_POLAR_ANGLE: Math.PI / 1.8, 
 
   // How close user can zoom in
-  MIN_DISTANCE: 2,  
+  MIN_DISTANCE: 2,                 
 
   // How far user can zoom out
-  MAX_DISTANCE: 8  
+  MAX_DISTANCE: 12                 
 }
 
 export const WEBGL_SETTINGS = {
