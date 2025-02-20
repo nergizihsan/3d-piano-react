@@ -8,8 +8,9 @@ import { Music, Upload } from "lucide-react"
 import { useState } from "react"
 import { SongPlayer } from "./song-player"
 import { AnimatePresence, motion } from "framer-motion"
-import { convertMidiToSong } from "@/lib/midi-converter"
-import { SAMPLE_SONGS } from "@/data/sample-songs"
+import { Midi } from "@tonejs/midi"
+import { usePianoAudio } from "@/hooks/use-piano-audio"
+import { useMidiStore } from '@/stores/midi-store'
 
 /**
  * Controls Component
@@ -40,24 +41,25 @@ export function Controls() {
   const [showSongPlayer, setShowSongPlayer] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
 
+  const addSong = useMidiStore(state => state.addSong)
+
   const handleMidiUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
     try {
       setIsUploading(true)
-      const song = await convertMidiToSong(file)
+      const arrayBuffer = await file.arrayBuffer()
+      const midi = new Midi(arrayBuffer)
       
-      // Add the new song to SAMPLE_SONGS
-      // Note: In a real app, you might want to use a different state management solution
-      SAMPLE_SONGS.push(song)
+      // Add to midi store
+      const songId = addSong(midi, file.name)
       
       // Show the song player
       setShowSongPlayer(true)
       
     } catch (error) {
-      console.error('Failed to convert MIDI:', error)
-      // You might want to add proper error handling/notification here
+      console.error('Failed to load MIDI:', error)
     } finally {
       setIsUploading(false)
     }

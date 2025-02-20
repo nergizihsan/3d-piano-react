@@ -67,19 +67,5 @@ export function generatePianoKeys(PIANO_DIMENSIONS: any): PianoKeyData[] {
     })
   }
 
-  // Log detailed statistics
-  console.log('\n=== Piano Key Generation Statistics ===')
-  console.log(`Total keys: ${stats.total} (White: ${stats.white}, Black: ${stats.black})`)
-  console.log('\nBy Octave:')
-  Object.entries(stats.byOctave).forEach(([octave, data]) => {
-    console.log(`\nOctave ${octave}:`)
-    console.log(`- White keys: ${data.white}`)
-    console.log(`- Black keys: ${data.black}`)
-    console.log('- Keys generated:')
-    data.keys.forEach(key => {
-      console.log(`  ${key.note}: [${key.position.map((p: number) => p.toFixed(3)).join(', ')}]`)
-    })
-  })
-
   return keys
 } 
