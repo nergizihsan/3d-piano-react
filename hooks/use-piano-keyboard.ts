@@ -1,5 +1,5 @@
 // src/hooks/use-piano-keyboard.ts
-import { useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { usePianoAudio } from '@/hooks/use-piano-audio'
 import { useAudioStore } from '@/stores/audio-store'
 import { toast } from 'sonner'
@@ -82,7 +82,8 @@ const KEY_MAPPINGS = {
  */
 export function usePianoKeyboard() {
   const { playNote, releaseNote } = usePianoAudio()
-  const { pressKey, releaseKey, currentOctave, setCurrentOctave } = useAudioStore()
+  const { currentOctave, setCurrentOctave } = useAudioStore()
+  const lastKeyPressTime = useRef<Record<string, number>>({})
 
   const handleNote = (note: string, isPress: boolean) => {
     if (note === 'octave_down') {
@@ -106,17 +107,21 @@ export function usePianoKeyboard() {
       return
     }
 
-    // Shift the note to the current octave
-    const noteWithoutOctave = note.slice(0, -1)
-    const noteOctave = parseInt(note.slice(-1))
-    const shiftedNote = `${noteWithoutOctave}${noteOctave + currentOctave - 3}`
+    const shiftedNote = `${note.slice(0, -1)}${parseInt(note.slice(-1)) + currentOctave - 3}`
 
     if (isPress) {
+      lastKeyPressTime.current[shiftedNote] = Date.now()
       playNote(shiftedNote)
-      pressKey(shiftedNote)
+      useAudioStore.getState().pressKey(shiftedNote, 'keyboard')
     } else {
+      const pressTime = lastKeyPressTime.current[shiftedNote]
+      const releaseVelocity = pressTime ? Math.min(1, (Date.now() - pressTime) / 300) : 0.5
+      
+      // Fast release = quick bounce back
+      // Slow release = gradual return
+      useAudioStore.getState().releaseKey(shiftedNote, 'keyboard', releaseVelocity)
       releaseNote(shiftedNote)
-      releaseKey(shiftedNote)
+      delete lastKeyPressTime.current[shiftedNote]
     }
   }
 
@@ -149,5 +154,5 @@ export function usePianoKeyboard() {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [currentOctave, playNote, releaseNote, pressKey, releaseKey])
+  }, [currentOctave, playNote, releaseNote])
 }

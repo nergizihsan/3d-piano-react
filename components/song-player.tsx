@@ -1,28 +1,33 @@
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Play, Pause } from "lucide-react"
-import { useState, useRef } from "react"
-import { SAMPLE_SONGS } from "@/data/sample-songs"
-import { cn } from "@/lib/utils"
-import { useMidiStore } from '@/stores/midi-store'
-import * as Tone from 'tone'
-import { usePianoAudio } from "@/hooks/use-piano-audio"
-import { useAudioStore } from "@/stores/audio-store"
-import { SONG_PLAYER_PHYSICS } from "@/constants/song-player"
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Play, Pause } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useMidiStore } from "@/stores/midi-store";
+import * as Tone from "tone";
+import { usePianoAudio } from "@/hooks/use-piano-audio";
+import { useAudioStore } from "@/stores/audio-store";
+import { midiEngine } from "@/services/midi-engine";
+import { SONG_PLAYER_PHYSICS } from "@/constants/piano-physics";
 
 /**
  * Song Player Component
- * 
+ *
  * RESPONSIBILITY:
  * - Provides song selection interface
  * - Controls playback state
  * - Manages current song state
- * 
+ *
  * FEATURES:
  * - Dropdown song selection
  * - Play/Pause toggle
  * - Visual feedback for playback state
- * 
+ *
  * TECHNICAL NOTES:
  * - Uses useSongPlayback hook for audio control
  * - Maintains local state for selected song
@@ -30,123 +35,148 @@ import { SONG_PLAYER_PHYSICS } from "@/constants/song-player"
  */
 
 interface SongPlayerProps {
-  className?: string
+  className?: string;
 }
 
 export function SongPlayer({ className }: SongPlayerProps) {
-  const [selectedSongId, setSelectedSongId] = useState<string>('')
-  const { playNote, releaseNote } = usePianoAudio()
-  const { pressKey, releaseKey } = useAudioStore()
-  const [isPlaying, setIsPlaying] = useState(false)
-  const midiSongs = useMidiStore(state => state.songs)
-  const getMidiSong = useMidiStore(state => state.getSong)
-  const scheduledEvents = useRef<number[]>([])
-
-  const stopPlayback = () => {
-    console.log('Stopping playback:', {
-      scheduledEvents: scheduledEvents.current.length,
-      pressedKeys: useAudioStore.getState().pressedKeys
-    })
-
-    setIsPlaying(false)
-    
-    // Clear all scheduled events
-    scheduledEvents.current.forEach(id => Tone.getTransport().clear(id))
-    scheduledEvents.current = []
-    
-    // Release all pressed keys
-    useAudioStore.getState().pressedKeys.forEach(note => {
-      console.log(`Releasing pressed key on stop: ${note}`)
-      releaseNote(note)
-      releaseKey(note)
-    })
-    useAudioStore.getState().clearPressedKeys()
-    
-    Tone.getTransport().stop()
-    Tone.getTransport().position = 0
-    Tone.getTransport().cancel()
-  }
+  const { playNote, releaseNote } = usePianoAudio();
+  const { pressKey, releaseKey } = useAudioStore();
+  const {
+    songs,
+    currentSongId,
+    isPlaying,
+    currentTrackIndex,
+    setCurrentTrack,
+    setCurrentSong,
+    setIsPlaying,
+    getSong,
+  } = useMidiStore();
 
   const handlePlayPause = async () => {
     if (isPlaying) {
-      stopPlayback()
-    } else {
-      const midiSong = getMidiSong(selectedSongId)
-      if (!midiSong) return
+      midiEngine.cleanup();
+      useAudioStore.getState().clearKeys('midi');
+      setIsPlaying(false);
+      Tone.getTransport().stop();
+      return;
+    }
 
-      await Tone.start()
-      const transport = Tone.getTransport()
-      transport.stop()
-      transport.position = 0
+    const song = getSong(currentSongId!);
+    if (!song) return;
 
-      // Set tempo from MIDI
-      if (midiSong.midi.header.tempos.length > 0) {
-        transport.bpm.value = midiSong.midi.header.tempos[0].bpm
+    try {
+      // Start Tone.js context first
+      await Tone.start();
+      await midiEngine.ensureContext();
+      
+      // Reset transport
+      Tone.getTransport().stop();
+      Tone.getTransport().position = 0;
+      
+      // Find first track with notes if currentTrackIndex is invalid
+      let track = song.midi.tracks[currentTrackIndex];
+      if (!track?.notes.length) {
+        const playableTrack = song.midi.tracks.find(t => t.notes.length > 0);
+        if (!playableTrack) {
+          throw new Error("No playable tracks found in MIDI file");
+        }
+        const newTrackIndex = song.midi.tracks.indexOf(playableTrack);
+        setCurrentTrack(newTrackIndex);
+        track = playableTrack;
       }
 
-      // Find first track with notes
-      const track = midiSong.midi.tracks.find(track => track.notes.length > 0)
-      if (!track) return
-
-      // Sort notes by time
-      const notes = track.notes.sort((a, b) => a.time - b.time)
-
-      // Schedule all notes
+      const notes = track.notes.sort((a, b) => a.time - b.time);
+      
       notes.forEach((note, index) => {
-        const nextNote = index < notes.length - 1 ? notes[index + 1] : null
+        const nextNote = index < notes.length - 1 ? notes[index + 1] : null;
+        const prevNote = index > 0 ? notes[index - 1] : null;
+        
+        // Audio scheduling - Exact MIDI timing
+        const audioStartId = Tone.getTransport().schedule(() => {
+          playNote(note.name, note.velocity);
+        }, note.time);
 
-        // Schedule audio exactly as in MIDI
-        const audioStartId = transport.schedule(time => {
-          playNote(note.name, note.velocity)
-        }, note.time)
+        const audioEndId = Tone.getTransport().schedule(() => {
+          releaseNote(note.name);
+        }, note.time + note.duration);
 
-        const audioEndId = transport.schedule(time => {
-          releaseNote(note.name)
-        }, note.time + note.duration)
+        // Visual scheduling with physics constraints
+        const nextSameNote = nextNote?.name === note.name;
+        const prevSameNote = prevNote?.name === note.name;
+        
+        // Calculate key press timing
+        const keyPressTime = Math.max(
+          note.time,
+          prevSameNote 
+            ? prevNote!.time + prevNote!.duration + SONG_PLAYER_PHYSICS.MIN_REPEAT_TIME
+            : note.time
+        );
 
-        // Schedule visual key press with physics constraints
-        const nextSameNote = nextNote && nextNote.name === note.name
-        const keyPressTime = note.time
-        const keyReleaseTime = nextSameNote ?
-          Math.min(
-            note.time + note.duration - SONG_PLAYER_PHYSICS.DAMPER_FALL_TIME,
-            nextNote.time - SONG_PLAYER_PHYSICS.KEY_RETURN_TIME
-          ) :
-          note.time + note.duration
+        // Calculate key release timing
+        const keyReleaseTime = nextSameNote
+          ? Math.min(
+              note.time + note.duration - SONG_PLAYER_PHYSICS.DAMPER_FALL_TIME,
+              nextNote.time - SONG_PLAYER_PHYSICS.KEY_RETURN_TIME
+            )
+          : note.time + note.duration;
 
-        const visualStartId = transport.schedule(time => {
-          pressKey(note.name, false, note.velocity)
-        }, keyPressTime)
+        // Schedule visual events with physics precision
+        const visualStartId = Tone.getTransport().schedule(() => {
+          pressKey(note.name, 'midi', note.velocity);
+        }, Tone.Time(keyPressTime).quantize(SONG_PLAYER_PHYSICS.TIMING_PRECISION));
 
-        const visualEndId = transport.schedule(time => {
-          releaseKey(note.name)
-        }, keyReleaseTime)
+        const visualEndId = Tone.getTransport().schedule(() => {
+          releaseKey(note.name, 'midi');
+        }, Tone.Time(keyReleaseTime).quantize(SONG_PLAYER_PHYSICS.TIMING_PRECISION));
 
-        scheduledEvents.current.push(audioStartId, audioEndId, visualStartId, visualEndId)
-      })
+        // Store all scheduled events
+        midiEngine.storeSchedule(note.name, {
+          audioStartId,
+          audioEndId,
+          visualStartId,
+          visualEndId,
+          handlers: {
+            onNoteOn: (note, velocity) => {
+              playNote(note, velocity);
+              pressKey(note, 'midi', velocity);
+            },
+            onNoteOff: (note) => {
+              releaseNote(note);
+              releaseKey(note, 'midi');
+            },
+          }
+        });
+      });
 
-      // Schedule end of song
-      const endId = transport.schedule(time => {
-        stopPlayback()
-      }, midiSong.midi.duration)
-      scheduledEvents.current.push(endId)
+      midiEngine.scheduleEnd(song.duration, () => {
+        setIsPlaying(false);
+        Tone.getTransport().stop();
+      });
 
-      setIsPlaying(true)
-      transport.start()
+      setIsPlaying(true);
+      Tone.getTransport().start();
+    } catch (error) {
+      console.error("Playback failed:", error);
+      console.log("MIDI file details:", {
+        tracks: song?.midi.tracks.map(t => ({
+          notes: t.notes.length,
+          instrument: t.instrument?.name
+        }))
+      });
+      setIsPlaying(false);
+      midiEngine.cleanup();
+      useAudioStore.getState().clearKeys('midi');
     }
-  }
+  };
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <Select
-        value={selectedSongId}
-        onValueChange={setSelectedSongId}
-      >
+      <Select value={currentSongId ?? undefined} onValueChange={setCurrentSong}>
         <SelectTrigger className="w-[180px] bg-white/5">
           <SelectValue placeholder="Select a MIDI file" />
         </SelectTrigger>
         <SelectContent>
-          {midiSongs.map((song) => (
+          {songs.map((song) => (
             <SelectItem key={song.id} value={song.id}>
               {song.title} - {song.artist}
             </SelectItem>
@@ -167,5 +197,5 @@ export function SongPlayer({ className }: SongPlayerProps) {
         )}
       </Button>
     </div>
-  )
+  );
 }

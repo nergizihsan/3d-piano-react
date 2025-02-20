@@ -2,27 +2,44 @@ import { create } from 'zustand'
 import { PIANO_DEFAULTS } from '@/constants/piano'
 import { useLayoutEffect } from 'react'
 
+interface KeyState {
+  isPressed: boolean
+  velocity: number
+  timestamp: number
+  source: 'keyboard' | 'mouse' | 'midi'
+  releaseVelocity?: number
+}
+
 interface AudioStore {
+  // Audio State
   volume: number
-  setVolume: (volume: number) => void
   isReady: boolean
-  setIsReady: (ready: boolean) => void
-  pressedKeys: string[]
-  mousePressed: Set<string>
-  pressKey: (note: string, isMouseEvent?: boolean, velocity?: number) => void
-  releaseKey: (note: string, isMouseEvent?: boolean) => void
-  isSceneLocked: boolean
-  toggleSceneLock: () => void
-  clearPressedKeys: () => void
   currentOctave: number
-  setCurrentOctave: (octave: number) => void
-  showNoteNames: boolean
-  toggleNoteNames: () => void
-  cleanupMousePressed: () => void
-  pressedKeyColor: string
-  setPressedKeyColor: (color: string) => void
+  
+  // Key States
+  keyStates: Map<string, KeyState>
+  
+  // Loading State
   loadingProgress: number
   loadingMessage: string
+  
+  // UI Preferences
+  showNoteNames: boolean
+  pressedKeyColor: string
+  isSceneLocked: boolean
+  
+  // Actions
+  setVolume: (volume: number) => void
+  setIsReady: (ready: boolean) => void
+  setCurrentOctave: (octave: number) => void
+  
+  pressKey: (note: string, source: 'keyboard' | 'mouse' | 'midi', velocity?: number) => void
+  releaseKey: (note: string, source: 'keyboard' | 'mouse' | 'midi', releaseVelocity?: number) => void
+  clearKeys: (source?: 'keyboard' | 'mouse' | 'midi') => void
+  
+  toggleNoteNames: () => void
+  toggleSceneLock: () => void
+  setPressedKeyColor: (color: string) => void
   setLoadingState: (progress: number, message: string) => void
 }
 
@@ -36,39 +53,31 @@ interface AudioStore {
  *    - Enables playing with both mouse and keyboard simultaneously
  * 
  * 2. Cleanup strategy:
- *    - Only cleans up mouse-pressed keys
- *    - Preserves keyboard-pressed keys
+ *    - Source-specific cleanup (mouse/keyboard/midi)
+ *    - Global pointer cleanup for mouse interactions (usePointerCleanup hook)
  *    - Handles edge cases like losing pointer events
+ * 
+ * 3. Key state management:
+ *    - Uses Map for O(1) lookups
+ *    - Tracks source, velocity, and timestamp
+ *    - Prevents cross-source interference
  */
 export const useAudioStore = create<AudioStore>((set, get) => ({
+  // Initial State
   volume: 0.7,
-  setVolume: (volume) => set({ volume }),
   isReady: false,
-  setIsReady: (ready) => set({ isReady: ready }),
-  pressedKeys: [],
-  mousePressed: new Set<string>(),
-  pressKey: (note, isMouseEvent = false, velocity = 0.8) => set((state) => {
-    if (isMouseEvent) {
-      state.mousePressed.add(note)
-    }
-    return {
-      pressedKeys: state.pressedKeys.includes(note) 
-        ? state.pressedKeys 
-        : [...state.pressedKeys, note]
-    }
-  }),
-  releaseKey: (note, isMouseEvent = false) => set((state) => {
-    if (isMouseEvent) {
-      state.mousePressed.delete(note)
-    }
-    return {
-      pressedKeys: state.pressedKeys.filter(key => key !== note)
-    }
-  }),
+  currentOctave: PIANO_DEFAULTS.DEFAULT_OCTAVE,
+  keyStates: new Map(),
+  loadingProgress: 0,
+  loadingMessage: 'Initializing...',
+  showNoteNames: false,
+  pressedKeyColor: '#ff0000',
   isSceneLocked: false,
-  toggleSceneLock: () => set((state) => ({ isSceneLocked: !state.isSceneLocked })),
-  clearPressedKeys: () => set({ pressedKeys: [] }),
-  currentOctave: PIANO_DEFAULTS.DEFAULT_OCTAVE,  // Start with default
+
+  // Audio Actions
+  setVolume: (volume) => set({ volume }),
+  setIsReady: (ready) => set({ isReady: ready }),
+  
   setCurrentOctave: (octave) => {
     const newOctave = Math.max(
       PIANO_DEFAULTS.MIN_OCTAVE,
@@ -79,27 +88,63 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
     }
     set({ currentOctave: newOctave })
   },
-  showNoteNames: false,
+
+  // Key State Management
+  pressKey: (note, source, velocity = 0.8) => set((state) => {
+    const keyStates = new Map(state.keyStates)
+    keyStates.set(note, {
+      isPressed: true,
+      velocity,
+      timestamp: Date.now(),
+      source
+    })
+    return { keyStates }
+  }),
+
+  releaseKey: (note: string, source: 'keyboard' | 'mouse' | 'midi', releaseVelocity?: number) => set((state) => {
+    const keyStates = new Map(state.keyStates)
+    const currentState = keyStates.get(note)
+    
+    if (currentState?.source === source) {
+      keyStates.delete(note)
+    }
+    return { keyStates }
+  }),
+
+  clearKeys: (source) => set((state) => {
+    const keyStates = new Map(state.keyStates)
+    
+    if (source) {
+      // Clear only keys from specific source
+      for (const [note, state] of keyStates) {
+        if (state.source === source) {
+          keyStates.delete(note)
+        }
+      }
+    } else {
+      // Clear all keys
+      keyStates.clear()
+    }
+    
+    return { keyStates }
+  }),
+
+  // UI Actions
   toggleNoteNames: () => set((state) => ({ 
     showNoteNames: !state.showNoteNames 
   })),
-  cleanupMousePressed: () => set((state) => {
-    const mouseKeys = Array.from(state.mousePressed)
-    return {
-      mousePressed: new Set<string>(),
-      // Only remove keys that were pressed by mouse
-      pressedKeys: state.pressedKeys.filter(key => !mouseKeys.includes(key))
-    }
-  }),
-  pressedKeyColor: '#ff0000', // Default red color
+
+  toggleSceneLock: () => set((state) => ({ 
+    isSceneLocked: !state.isSceneLocked 
+  })),
+
   setPressedKeyColor: (color) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('piano-pressed-key-color', color)
     }
     set({ pressedKeyColor: color })
   },
-  loadingProgress: 0,
-  loadingMessage: 'Initializing...',
+
   setLoadingState: (progress, message) => set({ 
     loadingProgress: progress, 
     loadingMessage: message 

@@ -9,8 +9,8 @@ import { useState } from "react"
 import { SongPlayer } from "./song-player"
 import { AnimatePresence, motion } from "framer-motion"
 import { Midi } from "@tonejs/midi"
-import { usePianoAudio } from "@/hooks/use-piano-audio"
 import { useMidiStore } from '@/stores/midi-store'
+import * as Tone from "tone"
 
 /**
  * Controls Component
@@ -52,14 +52,28 @@ export function Controls() {
       const arrayBuffer = await file.arrayBuffer()
       const midi = new Midi(arrayBuffer)
       
-      // Add to midi store
+      // Validate MIDI before adding
+      if (!midi.tracks.some(track => track.notes.length > 0)) {
+        throw new Error('No playable tracks found in MIDI file')
+      }
+
+      // Set initial tempo from MIDI
+      if (midi.header.tempos.length > 0) {
+        Tone.getTransport().bpm.value = midi.header.tempos[0].bpm
+      }
+      
       const songId = addSong(midi, file.name)
       
-      // Show the song player
+      // Only auto-select if no song is currently playing
+      if (!useMidiStore.getState().isPlaying) {
+        useMidiStore.getState().setCurrentSong(songId)
+      }
+      
       setShowSongPlayer(true)
       
     } catch (error) {
       console.error('Failed to load MIDI:', error)
+      // Here you might want to add toast notification
     } finally {
       setIsUploading(false)
     }

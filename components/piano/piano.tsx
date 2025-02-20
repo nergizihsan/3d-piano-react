@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useEffect } from 'react'
+import { useCallback, useMemo } from 'react'
 import { usePianoAudio } from '@/hooks/use-piano-audio'
 import { useAudioStore } from '@/stores/audio-store'
 import { usePianoKeyboard } from '@/hooks/use-piano-keyboard'
@@ -25,7 +25,7 @@ import { usePointerCleanup } from '@/hooks/use-pointer-cleanup'
  */
 export function Piano() {
   const { playNote, releaseNote } = usePianoAudio()
-  const { pressedKeys, pressKey, releaseKey } = useAudioStore()
+  const keyStates = useAudioStore(state => state.keyStates)
   
   // Memoize the piano keys generation
   const KEYS = useMemo(() => generatePianoKeys(PIANO_DIMENSIONS), [])
@@ -35,13 +35,13 @@ export function Piano() {
 
   const handleKeyPress = useCallback((note: string) => {
     playNote(note)
-    pressKey(note, true)
-  }, [playNote, pressKey])
+    useAudioStore.getState().pressKey(note, 'mouse')
+  }, [playNote])
 
   const handleKeyRelease = useCallback((note: string) => {
     releaseNote(note)
-    releaseKey(note, true) // Mark as mouse interaction
-  }, [releaseNote, releaseKey])
+    useAudioStore.getState().releaseKey(note, 'mouse')
+  }, [releaseNote])
 
   return (
     <group rotation={[0, Math.PI, 0]}>
@@ -52,7 +52,7 @@ export function Piano() {
             note={key.note}
             type={key.type}
             position={key.position}
-            isPressed={pressedKeys.includes(key.note)}
+            isPressed={keyStates.has(key.note)}
             onPress={() => handleKeyPress(key.note)}
             onRelease={() => handleKeyRelease(key.note)}
           />

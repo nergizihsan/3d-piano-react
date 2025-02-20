@@ -4,7 +4,7 @@ import { ThreeEvent } from "@react-three/fiber";
 import { useSpring, animated } from "@react-spring/three";
 import { Text } from "@react-three/drei";
 import { PianoKeyProps } from "@/types/piano";
-import { PIANO_PHYSICS, PIANO_DIMENSIONS } from "@/constants/piano";
+import { PIANO_GEOMETRY, PIANO_DIMENSIONS } from "@/constants/piano";
 import { useAudioStore } from "@/stores/audio-store";
 import { PIANO_MATERIALS } from "@/constants/piano";
 
@@ -32,19 +32,20 @@ export const PianoKey = memo(function PianoKey({
 
   const pressedKeyColor = useAudioStore(state => state.pressedKeyColor)
   
+  // Memoize material to prevent unnecessary recreations
   const material = useMemo(() => {
-    const baseMaterial = type === 'white' ? PIANO_MATERIALS.WHITE_KEY : PIANO_MATERIALS.BLACK_KEY
-    return new THREE.MeshStandardMaterial({
+    const baseMaterial = type === 'white' ? PIANO_MATERIALS.WHITE_KEY : PIANO_MATERIALS.BLACK_KEY;
+    return {
       metalness: baseMaterial.METALNESS,
       roughness: baseMaterial.ROUGHNESS,
       color: isPressed ? pressedKeyColor : baseMaterial.COLOR
-    })
-  }, [type, isPressed, pressedKeyColor])
+    };
+  }, [type, isPressed, pressedKeyColor]);
 
   // useSpring hook to animate the key press
   const springs = useSpring({
     // Target values based on isPressed state.  If pressed, rotate to MAX_ROTATION, otherwise no rotation.
-    rotationX: isPressed ? PIANO_PHYSICS.MAX_ROTATION : 0,
+    rotationX: isPressed ? PIANO_GEOMETRY.MAX_ROTATION : 0,
     config: {
       tension: 300,
       friction: 20,
@@ -112,14 +113,14 @@ export const PianoKey = memo(function PianoKey({
       position={[
         position[0],
         position[1],
-        position[2] + PIANO_PHYSICS.PIVOT_POINT,
+        position[2] + PIANO_GEOMETRY.PIVOT_POINT,
       ]}
       rotation-x={springs.rotationX}
     >
       {/* Invisible hitbox for black keys */}
       {type === "black" && hitboxDimensions && (
         <mesh
-          position={[0, 0, -PIANO_PHYSICS.PIVOT_POINT]}
+          position={[0, 0, -PIANO_GEOMETRY.PIVOT_POINT]}
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerLeave}
@@ -141,7 +142,7 @@ export const PianoKey = memo(function PianoKey({
         position={[
           0,
           type === "black" ? dimensions.height / 5 : 0,
-          -PIANO_PHYSICS.PIVOT_POINT,
+          -PIANO_GEOMETRY.PIVOT_POINT,
         ]}
         onPointerDown={type === "white" ? handlePointerDown : undefined}
         onPointerUp={type === "white" ? handlePointerUp : undefined}

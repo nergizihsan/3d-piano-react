@@ -27,17 +27,15 @@ import { useEffect } from 'react'
 import { useAudioStore } from '@/stores/audio-store'
 
 export function usePointerCleanup() {
-  const cleanupMousePressed = useAudioStore(state => state.cleanupMousePressed)
-
   useEffect(() => {
     const handlePointerUp = (e: PointerEvent) => {
       // Only handle mouse events - touch events have different interaction patterns
       if (e.pointerType === 'mouse') {
-        cleanupMousePressed()
+        useAudioStore.getState().clearKeys('mouse')
       }
     }
 
     window.addEventListener('pointerup', handlePointerUp)
     return () => window.removeEventListener('pointerup', handlePointerUp)
-  }, [cleanupMousePressed])
+  }, [])
 } 
