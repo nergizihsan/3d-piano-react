@@ -59,6 +59,7 @@ export const useMidiStore = create<MidiState & MidiActions>((set, get) => ({
     if (get().isPlaying) {
       midiEngine.cleanup();
       useAudioStore.getState().clearKeys('midi');
+      set({ isPlaying: false });
     }
     set({ currentSongId: id, currentTrackIndex: 0 });
   },

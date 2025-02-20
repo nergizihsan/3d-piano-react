@@ -7,7 +7,6 @@ interface KeyState {
   velocity: number
   timestamp: number
   source: 'keyboard' | 'mouse' | 'midi'
-  releaseVelocity?: number
 }
 
 interface AudioStore {
@@ -28,19 +27,28 @@ interface AudioStore {
   pressedKeyColor: string
   isSceneLocked: boolean
   
+  // Progress State
+  progress: number
+  currentTime: string
+  duration: string
+  
   // Actions
   setVolume: (volume: number) => void
   setIsReady: (ready: boolean) => void
   setCurrentOctave: (octave: number) => void
   
   pressKey: (note: string, source: 'keyboard' | 'mouse' | 'midi', velocity?: number) => void
-  releaseKey: (note: string, source: 'keyboard' | 'mouse' | 'midi', releaseVelocity?: number) => void
+  releaseKey: (note: string, source: 'keyboard' | 'mouse' | 'midi') => void
   clearKeys: (source?: 'keyboard' | 'mouse' | 'midi') => void
   
   toggleNoteNames: () => void
   toggleSceneLock: () => void
   setPressedKeyColor: (color: string) => void
   setLoadingState: (progress: number, message: string) => void
+  
+  // Progress Actions
+  setProgress: (progress: number, currentTime: string, duration: string) => void
+  resetProgress: () => void
 }
 
 /**
@@ -73,6 +81,11 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
   showNoteNames: false,
   pressedKeyColor: '#ff0000',
   isSceneLocked: false,
+  
+  // Progress Initial State
+  progress: 0,
+  currentTime: "0:00",
+  duration: "0:00",
 
   // Audio Actions
   setVolume: (volume) => set({ volume }),
@@ -101,10 +114,11 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
     return { keyStates }
   }),
 
-  releaseKey: (note: string, source: 'keyboard' | 'mouse' | 'midi', releaseVelocity?: number) => set((state) => {
+  releaseKey: (note, source) => set((state) => {
     const keyStates = new Map(state.keyStates)
     const currentState = keyStates.get(note)
     
+    // Only release if the key was pressed by the same source
     if (currentState?.source === source) {
       keyStates.delete(note)
     }
@@ -124,6 +138,16 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
     } else {
       // Clear all keys
       keyStates.clear()
+    }
+    
+    // Also reset progress when clearing all keys or MIDI source
+    if (!source || source === 'midi') {
+      return { 
+        keyStates,
+        progress: 0,
+        currentTime: "0:00",
+        duration: "0:00"
+      }
     }
     
     return { keyStates }
@@ -148,6 +172,19 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
   setLoadingState: (progress, message) => set({ 
     loadingProgress: progress, 
     loadingMessage: message 
+  }),
+
+  // Progress Actions
+  setProgress: (progress, currentTime, duration) => set({
+    progress,
+    currentTime,
+    duration
+  }),
+  
+  resetProgress: () => set({
+    progress: 0,
+    currentTime: "0:00",
+    duration: "0:00"
   }),
 }))
 

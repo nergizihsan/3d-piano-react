@@ -114,12 +114,7 @@ export function usePianoKeyboard() {
       playNote(shiftedNote)
       useAudioStore.getState().pressKey(shiftedNote, 'keyboard')
     } else {
-      const pressTime = lastKeyPressTime.current[shiftedNote]
-      const releaseVelocity = pressTime ? Math.min(1, (Date.now() - pressTime) / 300) : 0.5
-      
-      // Fast release = quick bounce back
-      // Slow release = gradual return
-      useAudioStore.getState().releaseKey(shiftedNote, 'keyboard', releaseVelocity)
+      useAudioStore.getState().releaseKey(shiftedNote, 'keyboard')
       releaseNote(shiftedNote)
       delete lastKeyPressTime.current[shiftedNote]
     }

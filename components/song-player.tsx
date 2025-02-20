@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -6,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Play, Pause } from "lucide-react";
+import { Play, Square, SkipBack, SkipForward, Music2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMidiStore } from "@/stores/midi-store";
 import * as Tone from "tone";
@@ -14,6 +15,7 @@ import { usePianoAudio } from "@/hooks/use-piano-audio";
 import { useAudioStore } from "@/stores/audio-store";
 import { midiEngine } from "@/services/midi-engine";
 import { SONG_PLAYER_PHYSICS } from "@/constants/piano-physics";
+import { toast } from "sonner";
 
 /**
  * Song Player Component
@@ -36,11 +38,10 @@ import { SONG_PLAYER_PHYSICS } from "@/constants/piano-physics";
 
 interface SongPlayerProps {
   className?: string;
+  onUploadRequest: () => void;
 }
 
-export function SongPlayer({ className }: SongPlayerProps) {
-  const { playNote, releaseNote } = usePianoAudio();
-  const { pressKey, releaseKey } = useAudioStore();
+export function SongPlayer({ className, onUploadRequest }: SongPlayerProps) {
   const {
     songs,
     currentSongId,
@@ -52,17 +53,78 @@ export function SongPlayer({ className }: SongPlayerProps) {
     getSong,
   } = useMidiStore();
 
+  const {
+    progress,
+    currentTime,
+    duration,
+    setProgress,
+  } = useAudioStore();
+
+  const { playNote, releaseNote } = usePianoAudio();
+  const { pressKey, releaseKey } = useAudioStore();
+
+  const currentSong = currentSongId ? getSong(currentSongId) : null;
+
+  // Update progress bar and time
+  useEffect(() => {
+    if (!isPlaying || !currentSong) return;
+
+    const interval = setInterval(() => {
+      const current = Tone.getTransport().seconds;
+      const total = currentSong.duration;
+      const newProgress = (current / total) * 100;
+      
+      setProgress(
+        newProgress,
+        formatTime(current),
+        formatTime(total)
+      );
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, currentSong, setProgress]);
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  const handleSeek = async (value: number) => {
+    if (!currentSong) return;
+    const newTime = (value / 100) * currentSong.duration;
+    
+    // Stop current playback and clean up
+    await Promise.all([
+      midiEngine.cleanup(),
+      useAudioStore.getState().clearKeys('midi'),
+      Tone.getTransport().stop()
+    ]);
+
+    // Set new position and restart if was playing
+    Tone.getTransport().position = newTime;
+    if (isPlaying) {
+      handlePlayPause();
+    }
+  };
+
   const handlePlayPause = async () => {
     if (isPlaying) {
-      midiEngine.cleanup();
-      useAudioStore.getState().clearKeys('midi');
+      const audioStore = useAudioStore.getState();
+      await Promise.all([
+        midiEngine.cleanup(),
+        audioStore.clearKeys('midi'),
+        Tone.getTransport().stop()
+      ]);
       setIsPlaying(false);
-      Tone.getTransport().stop();
       return;
     }
 
     const song = getSong(currentSongId!);
-    if (!song) return;
+    if (!song) {
+      toast.error("Please select a song to play.");
+      return;
+    }
 
     try {
       // Start Tone.js context first
@@ -78,7 +140,8 @@ export function SongPlayer({ className }: SongPlayerProps) {
       if (!track?.notes.length) {
         const playableTrack = song.midi.tracks.find(t => t.notes.length > 0);
         if (!playableTrack) {
-          throw new Error("No playable tracks found in MIDI file");
+          toast.error("No playable tracks found in MIDI file");
+          return;
         }
         const newTrackIndex = song.midi.tracks.indexOf(playableTrack);
         setCurrentTrack(newTrackIndex);
@@ -87,6 +150,16 @@ export function SongPlayer({ className }: SongPlayerProps) {
 
       const notes = track.notes.sort((a, b) => a.time - b.time);
       
+      // TODO: Make initial silence skip optional in settings
+      // Skip initial silence if it's more than 1 second
+      const firstNoteTime = notes[0].time;
+      if (firstNoteTime > 1) {
+        notes.forEach(note => {
+          note.time -= firstNoteTime;
+        });
+        song.duration -= firstNoteTime;
+      }
+
       notes.forEach((note, index) => {
         const nextNote = index < notes.length - 1 ? notes[index + 1] : null;
         const prevNote = index > 0 ? notes[index - 1] : null;
@@ -155,6 +228,7 @@ export function SongPlayer({ className }: SongPlayerProps) {
 
       setIsPlaying(true);
       Tone.getTransport().start();
+
     } catch (error) {
       console.error("Playback failed:", error);
       console.log("MIDI file details:", {
@@ -170,32 +244,77 @@ export function SongPlayer({ className }: SongPlayerProps) {
   };
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      <Select value={currentSongId ?? undefined} onValueChange={setCurrentSong}>
-        <SelectTrigger className="w-[180px] bg-white/5">
-          <SelectValue placeholder="Select a MIDI file" />
-        </SelectTrigger>
-        <SelectContent>
-          {songs.map((song) => (
-            <SelectItem key={song.id} value={song.id}>
-              {song.title} - {song.artist}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+    <div className={cn("flex flex-col gap-2 min-w-[300px]", className)}>
+      {/* Song Selection and Controls Row */}
+      <div className="flex items-center gap-2 bg-black/20 p-1 rounded-lg">
+        <div className="flex-shrink-0 w-8 h-8 bg-white/5 rounded-md flex items-center justify-center">
+          <Music2 className="w-5 h-5 text-white/50" />
+        </div>
+        
+        <div className="flex-grow">
+          <Select 
+            value={currentSongId ?? undefined} 
+            onValueChange={setCurrentSong}
+            onOpenChange={(open) => {
+              if (open && songs.length === 0) onUploadRequest();
+            }}
+          >
+            <SelectTrigger className="w-full bg-transparent border-none focus:ring-0">
+              <SelectValue 
+                placeholder="Select a song" 
+                className="text-sm font-medium"
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {songs.length === 0 ? (
+                <SelectItem value="upload" className="opacity-50">
+                  Upload MIDI file
+                </SelectItem>
+              ) : (
+                songs.map((song) => (
+                  <SelectItem key={song.id} value={song.id}>
+                    {song.title}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
 
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={handlePlayPause}
-        className="text-white/70 hover:text-white hover:bg-white/10"
-      >
-        {isPlaying ? (
-          <Pause className="h-4 w-4" />
-        ) : (
-          <Play className="h-4 w-4" />
-        )}
-      </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handlePlayPause}
+            disabled={!currentSong}
+            className="w-8 h-8 text-white/70 hover:text-white hover:bg-white/10"
+          >
+            {isPlaying ? (
+              <Square className="h-4 w-4" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Progress Bar Row */}
+      <div className="flex items-center gap-2 px-2">
+        <span className="text-xs text-white/50 w-10 text-right">
+          {currentTime}
+        </span>
+        
+        <div className="flex-grow h-2 bg-white/10 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-white/30 transition-all duration-100"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        
+        <span className="text-xs text-white/50 w-10">
+          {duration}
+        </span>
+      </div>
     </div>
   );
 }

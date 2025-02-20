@@ -13,11 +13,16 @@ interface NoteSchedule {
 }
 
 class MidiEngine {
-  private transport = Tone.getTransport()
-  private activeSchedules = new Map<string, NoteSchedule>()
-  private endScheduleId?: number
+  private activeSchedules: Map<string, NoteSchedule> = new Map();
+  private activeTimeouts: Set<NodeJS.Timeout> = new Set();
+  private transport: ReturnType<typeof Tone.getTransport>;
+  private endScheduleId?: number;
   private activeNotes = new Set<string>()
   
+  constructor() {
+    this.transport = Tone.getTransport();
+  }
+
   async ensureContext() {
     await Tone.start()
     this.transport.stop()
@@ -26,6 +31,10 @@ class MidiEngine {
 
   storeSchedule(note: string, schedule: NoteSchedule) {
     this.activeSchedules.set(note, schedule)
+  }
+
+  storeTimeout(timeoutId: NodeJS.Timeout) {
+    this.activeTimeouts.add(timeoutId);
   }
 
   scheduleNote(
@@ -49,7 +58,7 @@ class MidiEngine {
 
     // Calculate visual timing with physics
     const nextSameNote = nextNote?.name === name
-    const keyReleaseTime = nextSameNote
+    const keyReleaseTime = nextSameNote && nextNote
       ? Math.min(
           time + duration - SONG_PLAYER_PHYSICS.DAMPER_FALL_TIME,
           nextNote.time - SONG_PLAYER_PHYSICS.KEY_RETURN_TIME
@@ -74,6 +83,12 @@ class MidiEngine {
   }
 
   cleanup() {
+    // Clear all timeouts
+    this.activeTimeouts.forEach(timeoutId => {
+      clearTimeout(timeoutId);
+    });
+    this.activeTimeouts.clear();
+
     // Release any active notes first
     this.activeNotes.forEach(note => {
       const schedule = this.activeSchedules.get(note);
@@ -86,20 +101,22 @@ class MidiEngine {
     // Clear note schedules
     this.activeSchedules.forEach(schedule => {
       Object.values(schedule).forEach(id => {
-        this.transport.clear(id)
-      })
-    })
-    this.activeSchedules.clear()
+        if (typeof id === 'number') {
+          this.transport.clear(id);
+        }
+      });
+    });
+    this.activeSchedules.clear();
 
     // Clear end schedule
     if (this.endScheduleId) {
-      this.transport.clear(this.endScheduleId)
-      this.endScheduleId = undefined
+      this.transport.clear(this.endScheduleId);
+      this.endScheduleId = undefined;
     }
 
-    this.transport.stop()
-    this.transport.position = 0
-    this.transport.cancel()
+    this.transport.stop();
+    this.transport.position = 0;
+    this.transport.cancel();
   }
 }
 

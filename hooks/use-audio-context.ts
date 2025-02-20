@@ -37,10 +37,12 @@ import * as Tone from 'tone'
  * Note: This is a workaround for a fundamental limitation in how browsers handle audio contexts.
  * Future Web Audio API improvements may provide better ways to handle this use case.
  */
-export function useAudioContext() {
+export function useAudioContext(isEnabled: boolean) {
   const silentOscillator = useRef<Tone.Oscillator | null>(null)
 
   useEffect(() => {
+    if (!isEnabled) return
+
     // Create an inaudible oscillator to keep the audio context alive
     const setupSilentOscillator = () => {
       if (!silentOscillator.current) {
@@ -78,5 +80,5 @@ export function useAudioContext() {
       }
       context.removeEventListener('statechange', handleStateChange)
     }
-  }, [])
+  }, [isEnabled])
 } 
