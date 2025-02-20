@@ -3,7 +3,7 @@ import * as Tone from 'tone'
 import { PianoSong } from '@/types/song'
 import { usePianoAudio } from './use-piano-audio'
 import { useAudioStore } from '@/stores/audio-store'
-import { SONG_PLAYER_PHYSICS } from '@/constants/song-player'
+import { AUDIO_SETTINGS } from '@/constants/audio'
 /**
  * Piano Song Playback Hook
  * 
@@ -36,83 +36,110 @@ export function useSongPlayback() {
   const { pressKey, releaseKey } = useAudioStore()
   const scheduledEvents = useRef<number[]>([])
   const [isPlaying, setIsPlaying] = useState(false)
-  const endTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const endCheckInterval = useRef<NodeJS.Timeout | null>(null)
   
   const transport = Tone.getTransport()
 
+  const checkSongEnd = (duration: number) => {
+    // Clear any existing interval
+    if (endCheckInterval.current) {
+      clearInterval(endCheckInterval.current)
+    }
+
+    // Start checking if song has ended
+    endCheckInterval.current = setInterval(() => {
+      const currentTime = transport.seconds
+      if (currentTime >= duration) {
+        console.log('Song ended naturally:', { currentTime, duration })
+        stopSong()
+      }
+    }, 100) // Check every 100ms
+  }
+
   const playSong = async (song: PianoSong) => {
+    console.log('Starting playback:', {
+      title: song.title,
+      noteCount: song.notes.length,
+      tempo: song.tempo,
+      duration: song.duration
+    })
+
+    // Reset everything
     stopSong()
     transport.stop()
     transport.position = 0
     await Tone.start()
     
-    // Calculate total duration in seconds - most reliable way to handle song end
-    const songDurationInSeconds = song.duration * (60 / song.tempo)
-    
-    // Set up precise end time handler
-    if (endTimeoutRef.current) {
-      clearTimeout(endTimeoutRef.current)
-    }
-    endTimeoutRef.current = setTimeout(() => {
-      setIsPlaying(false)
-      stopSong()
-    }, songDurationInSeconds * 1000) // Convert to milliseconds
+    // Set basic parameters with precise tempo handling
+    transport.timeSignature = song.timeSignature
+    transport.bpm.value = song.tempo
 
+    // Pre-calculate timing for better accuracy
+    const ticksPerBeat = transport.PPQ // Pulses Per Quarter note
+    const secondsPerTick = (60 / song.tempo) / ticksPerBeat
+
+    // Set context lookAhead to match our audio settings
+    Tone.getContext().lookAhead = AUDIO_SETTINGS.PLAYBACK.LOOK_AHEAD
+
+    // Schedule notes with improved timing
     song.notes.forEach((note, index) => {
-      const previousNote = song.notes[index - 1]
-      const timeSincePrevious = previousNote 
-        ? note.startTime - (previousNote.startTime + previousNote.duration)
-        : Infinity
+      // Handle consecutive notes more precisely
+      const previousNote = index > 0 ? song.notes[index - 1] : null
+      const needsOffset = previousNote && 
+                         previousNote.name === note.name && 
+                         (note.ticks - previousNote.ticks) < ticksPerBeat / 32
 
-      if (previousNote && previousNote.note === note.note) {
-        if (timeSincePrevious < SONG_PLAYER_PHYSICS.MIN_REPEAT_TIME) {
-          // Release key early to allow mechanism reset
-          const releaseEarlyId = transport.schedule((time) => {
-            releaseNote(note.note)
-            releaseKey(note.note)
-          }, note.startTime - SONG_PLAYER_PHYSICS.DAMPER_FALL_TIME)
-          
-          const adjustedStartTime = Math.max(
-            note.startTime,
-            previousNote.startTime + SONG_PLAYER_PHYSICS.MIN_REPEAT_TIME
-          )
-          
-          const startId = transport.schedule((time) => {
-            playNote(note.note)
-            pressKey(note.note)
-          }, adjustedStartTime)
+      const adjustedStartTicks = needsOffset ? 
+        note.ticks + Math.ceil(ticksPerBeat / 64) : // Minimal offset for repeated notes
+        note.ticks
 
-          scheduledEvents.current.push(releaseEarlyId, startId)
-        }
-      }
-
+      // Schedule note start with more precise timing
       const startId = transport.schedule((time) => {
-        playNote(note.note)
-        pressKey(note.note)
-      }, note.startTime)
+        playNote(note.name, note.velocity)
+        pressKey(note.name, false, note.velocity)
+      }, `${adjustedStartTicks}i`)
 
-      const releaseTime = note.startTime + note.duration
+      // Schedule note release with precise duration
       const releaseId = transport.schedule((time) => {
-        releaseNote(note.note)
-        releaseKey(note.note)
-      }, releaseTime)
+        releaseNote(note.name)
+        releaseKey(note.name)
+      }, `${adjustedStartTicks + note.durationTicks}i`)
 
       scheduledEvents.current.push(startId, releaseId)
     })
 
-    transport.bpm.value = song.tempo
+    // Start playback
     setIsPlaying(true)
     transport.start()
+    checkSongEnd(song.duration)
   }
 
   const stopSong = () => {
-    if (endTimeoutRef.current) {
-      clearTimeout(endTimeoutRef.current)
-      endTimeoutRef.current = null
+    console.log('Stopping song:', {
+      scheduledEvents: scheduledEvents.current.length,
+      pressedKeys: useAudioStore.getState().pressedKeys
+    })
+    
+    // Clear end check interval
+    if (endCheckInterval.current) {
+      clearInterval(endCheckInterval.current)
+      endCheckInterval.current = null
     }
+
     setIsPlaying(false)
+    
+    // Clear all scheduled events
     scheduledEvents.current.forEach(id => transport.clear(id))
     scheduledEvents.current = []
+    
+    // Release all pressed keys
+    useAudioStore.getState().pressedKeys.forEach(note => {
+      console.log(`Releasing pressed key on stop: ${note}`)
+      releaseNote(note)
+      releaseKey(note)
+    })
+    useAudioStore.getState().clearPressedKeys()
+    
     transport.stop()
     transport.position = 0
     transport.cancel()
@@ -120,8 +147,9 @@ export function useSongPlayback() {
 
   useEffect(() => {
     return () => {
-      if (endTimeoutRef.current) {
-        clearTimeout(endTimeoutRef.current)
+      console.log('Cleanup on unmount')
+      if (endCheckInterval.current) {
+        clearInterval(endCheckInterval.current)
       }
       stopSong()
     }

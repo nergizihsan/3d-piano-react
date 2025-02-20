@@ -9,7 +9,7 @@ interface AudioStore {
   setIsReady: (ready: boolean) => void
   pressedKeys: string[]
   mousePressed: Set<string>
-  pressKey: (note: string, isMouseEvent?: boolean) => void
+  pressKey: (note: string, isMouseEvent?: boolean, velocity?: number) => void
   releaseKey: (note: string, isMouseEvent?: boolean) => void
   isSceneLocked: boolean
   toggleSceneLock: () => void
@@ -44,7 +44,7 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
   setIsReady: (ready) => set({ isReady: ready }),
   pressedKeys: [],
   mousePressed: new Set<string>(),
-  pressKey: (note, isMouseEvent = false) => set((state) => {
+  pressKey: (note, isMouseEvent = false, velocity = 0.8) => set((state) => {
     if (isMouseEvent) {
       state.mousePressed.add(note)
     }

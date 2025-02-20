@@ -35,7 +35,7 @@ export function Piano() {
 
   const handleKeyPress = useCallback((note: string) => {
     playNote(note)
-    pressKey(note, true) // Mark as mouse interaction
+    pressKey(note, true)
   }, [playNote, pressKey])
 
   const handleKeyRelease = useCallback((note: string) => {

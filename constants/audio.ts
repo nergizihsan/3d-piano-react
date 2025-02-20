@@ -1,14 +1,14 @@
 export const AUDIO_SETTINGS = {
   SAMPLE_RATE: 44100,
-  BUFFER_SIZE: 1024,
+  BUFFER_SIZE: 512,
   LATENCY_HINT: 'interactive' as const,
   
   EFFECTS: {
     COMPRESSOR: {
       THRESHOLD: -20,
       RATIO: 3,
-      ATTACK: 0.003,
-      RELEASE: 0.25
+      ATTACK: 0.0015,
+      RELEASE: 0.15
     },
     EQ: {
       LOW: -3,
@@ -16,6 +16,7 @@ export const AUDIO_SETTINGS = {
       HIGH: 1.5
     },
     REVERB: {
+      ENABLED: true,
       DECAY: 2.5,
       PRE_DELAY: 0.01,
       WET: 0.35
@@ -39,5 +40,11 @@ export const AUDIO_SETTINGS = {
     FREQUENCY: 20,
     VOLUME: -100,
     TYPE: 'sine' as const
+  },
+
+  PLAYBACK: {
+    LOOK_AHEAD: 0.015,
+    SCHEDULING_INTERVAL: 0.015,
+    SAFETY_OFFSET: 0.02
   }
 } 

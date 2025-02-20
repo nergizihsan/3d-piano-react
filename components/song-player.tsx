@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Play, Square, Pause } from "lucide-react"
+import { Play, Pause } from "lucide-react"
 import { useState } from "react"
 import { SAMPLE_SONGS } from "@/data/sample-songs"
 import { useSongPlayback } from "@/hooks/use-song-playback"

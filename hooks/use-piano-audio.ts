@@ -100,6 +100,10 @@ export function usePianoAudio() {
             'C6': `C6.${audioFormat}`,
           },
           baseUrl: '/samples/piano/',
+          attack: 0,
+          release: 0.1,
+          curve: 'linear',
+          volume: 0,
           onload: () => {
             console.log('Piano samples loaded')
             setIsLoaded(true)
@@ -140,7 +144,7 @@ export function usePianoAudio() {
     }
   }, [volume])
 
-  const playNote = async (note: string) => {
+  const playNote = async (note: string, velocity: number = 0.8) => {
     if (!sampler.current || !isLoaded) return
 
     try {
@@ -150,10 +154,10 @@ export function usePianoAudio() {
       // Store both start time and initial velocity
       activeNotes.current[fullNote] = {
         startTime: Tone.now(),
-        velocity: 0.8  // Initial attack velocity
+        velocity  // Use the provided velocity
       }
       
-      sampler.current.triggerAttack(fullNote, undefined, 0.8)
+      sampler.current.triggerAttack(fullNote, undefined, velocity)
     } catch (error) {
       console.error('Error playing note:', error)
     }
@@ -171,8 +175,8 @@ export function usePianoAudio() {
     // Calculate release velocity based on hold duration
     // Shorter holds (< 0.1s) = quick release (0.8)
     // Longer holds (> 2s) = gentle release (0.2)
-    const releaseTime = Math.max(0.1, 
-      0.1 + (Math.min(holdDuration, 2) * 0.2)
+    const releaseTime = Math.max(0.08,  // Reduced minimum release time
+      0.08 + (Math.min(holdDuration, 1.5) * 0.15)  // More responsive curve
     )
     
     // Use release time instead of velocity for the envelope

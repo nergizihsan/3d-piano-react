@@ -4,10 +4,12 @@ import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { useAudioStore } from "@/stores/audio-store"
 import { cn } from "@/lib/utils"
-import { Music, Pause } from "lucide-react"
+import { Music, Upload } from "lucide-react"
 import { useState } from "react"
 import { SongPlayer } from "./song-player"
 import { AnimatePresence, motion } from "framer-motion"
+import { convertMidiToSong } from "@/lib/midi-converter"
+import { SAMPLE_SONGS } from "@/data/sample-songs"
 
 /**
  * Controls Component
@@ -36,6 +38,30 @@ import { AnimatePresence, motion } from "framer-motion"
 export function Controls() {
   const { isSceneLocked, toggleSceneLock } = useAudioStore()
   const [showSongPlayer, setShowSongPlayer] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+
+  const handleMidiUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      setIsUploading(true)
+      const song = await convertMidiToSong(file)
+      
+      // Add the new song to SAMPLE_SONGS
+      // Note: In a real app, you might want to use a different state management solution
+      SAMPLE_SONGS.push(song)
+      
+      // Show the song player
+      setShowSongPlayer(true)
+      
+    } catch (error) {
+      console.error('Failed to convert MIDI:', error)
+      // You might want to add proper error handling/notification here
+    } finally {
+      setIsUploading(false)
+    }
+  }
 
   return (
     <div className="flex items-center gap-2 bg-black/40 backdrop-blur p-4 rounded-lg select-none">
@@ -57,6 +83,28 @@ export function Controls() {
       >
         {isSceneLocked ? "Unlock Camera" : "Lock Camera"}
       </label>
+
+      <div className="w-px h-4 bg-white/20 mx-2" />
+
+      <div className="relative">
+        <input
+          type="file"
+          accept=".mid,.midi"
+          onChange={handleMidiUpload}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={isUploading}
+          className="text-white/70 hover:text-white hover:bg-white/10"
+        >
+          <Upload className={cn(
+            "h-4 w-4",
+            isUploading && "animate-pulse"
+          )} />
+        </Button>
+      </div>
 
       <div className="w-px h-4 bg-white/20 mx-2" />
 
