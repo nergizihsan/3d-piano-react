@@ -51,6 +51,35 @@ const KEY_MAPPINGS = {
   'arrowup': 'octave_up',
 } as const
 
+/**
+ * Piano Keyboard Hook
+ * 
+ * RESPONSIBILITY:
+ * - Manages keyboard input for piano playback
+ * - Handles octave switching
+ * - Maps keyboard keys to musical notes
+ * 
+ * FEATURES:
+ * 1. Multi-octave support with keyboard controls
+ * 2. Prevents key repeat events
+ * 3. Maps both white and black keys
+ * 4. Octave range validation
+ * 
+ * TECHNICAL NOTES:
+ * - Uses event.repeat check to prevent unwanted retriggering
+ * - Handles both note and octave control keys
+ * - Provides user feedback through toast messages
+ * 
+ * LIMITATIONS:
+ * - Subject to keyboard hardware key rollover limits
+ * - Some key combinations may not work on basic keyboards
+ * 
+ * KEY MAPPING LAYOUT:
+ * - Lower Octave: Z-M (white), 1-5 (black)
+ * - Middle Octave: A-J (white), W,E,T,Y,U (black)
+ * - Upper Octave: K-\ (white), O,P,] (black)
+ * - Octave Control: Arrow Up/Down
+ */
 export function usePianoKeyboard() {
   const { playNote, releaseNote } = usePianoAudio()
   const { pressKey, releaseKey, currentOctave, setCurrentOctave } = useAudioStore()

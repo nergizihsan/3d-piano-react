@@ -1,3 +1,4 @@
+import { HexColorPicker } from "react-colorful"
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { Keyboard } from "lucide-react"
 import { useAudioStore } from "@/stores/audio-store"
 import { cn } from "@/lib/utils"
+import { useState } from "react"
 
 interface SettingsDialogProps {
   open: boolean
@@ -17,12 +19,45 @@ interface SettingsDialogProps {
   onOpenShortcuts: () => void
 }
 
+/**
+ * SettingsDialog Component
+ * 
+ * RESPONSIBILITY:
+ * - Manages piano settings and preferences
+ * - Provides access to keyboard shortcuts
+ * - Controls volume and note name display
+ * 
+ * FEATURES:
+ * - Volume control with slider
+ * - Note names toggle
+ * - Keyboard shortcuts access
+ * 
+ * STATE MANAGEMENT:
+ * - Connected to audio store for settings persistence
+ * - Handles modal visibility through props
+ * 
+ * DESIGN DECISIONS:
+ * - Semi-transparent backdrop for context
+ * - Immediate feedback on setting changes
+ * - Consistent styling with main app theme
+ * - High contrast close button for visibility
+ */
 export function SettingsDialog({ open, onOpenChange, onOpenShortcuts }: SettingsDialogProps) {
-  const { volume, setVolume, showNoteNames, toggleNoteNames } = useAudioStore()
+  const { 
+    volume, 
+    setVolume, 
+    showNoteNames, 
+    toggleNoteNames,
+    pressedKeyColor,
+    setPressedKeyColor
+  } = useAudioStore()
+
+  // Local state for color picker visibility
+  const [showColorPicker, setShowColorPicker] = useState(false)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-slate-900/95 border-white/10">
+      <DialogContent className="sm:max-w-[425px] bg-slate-900/95 border-white/10 [&>button]:text-white">
         <DialogHeader>
           <DialogTitle className="text-white">Settings</DialogTitle>
         </DialogHeader>
@@ -38,6 +73,36 @@ export function SettingsDialog({ open, onOpenChange, onOpenShortcuts }: Settings
             <Keyboard className="h-4 w-4" />
             View Keyboard Shortcuts
           </Button>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-sm text-white">Pressed Key Color</span>
+            <div className="relative">
+              <Button
+                variant="outline"
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                className="w-full flex items-center gap-2 bg-white/5 border-white/10 hover:bg-blue-500 text-white"
+              >
+                <div 
+                  className="w-4 h-4 rounded-full border border-white/20" 
+                  style={{ backgroundColor: pressedKeyColor }} 
+                />
+                {pressedKeyColor}
+              </Button>
+              {showColorPicker && (
+                <div className="absolute top-full left-0 mt-2 z-50">
+                  <div 
+                    className="fixed inset-0" 
+                    onClick={() => setShowColorPicker(false)} 
+                  />
+                  <HexColorPicker
+                    color={pressedKeyColor}
+                    onChange={setPressedKeyColor}
+                    className="relative"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
 
           <div className="flex flex-col gap-2">
             <span className="text-sm text-white">Volume</span>

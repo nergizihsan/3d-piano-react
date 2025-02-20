@@ -2,6 +2,33 @@ import { useEffect, useRef, useState } from 'react'
 import * as Tone from 'tone'
 import { useAudioStore } from '@/stores/audio-store'
 
+/**
+ * Piano Audio Hook
+ * 
+ * RESPONSIBILITY:
+ * - Manages the audio engine using Tone.js
+ * - Handles sample loading and audio processing chain
+ * - Controls note playback with velocity and release timing
+ * 
+ * AUDIO CHAIN:
+ * Sampler -> EQ -> Compressor -> String Resonance -> Delay -> Reverb -> Output
+ * 
+ * FEATURES:
+ * 1. Dynamic sample loading based on browser support (ogg/mp3)
+ * 2. Velocity-sensitive note playback
+ * 3. Release time based on note hold duration
+ * 4. Multiple audio enhancement effects:
+ *    - EQ: Reduces mud, enhances clarity
+ *    - Compressor: Controls dynamics
+ *    - Reverb: Adds space and depth
+ *    - String Resonance: Simulates piano string behavior
+ * 
+ * PERFORMANCE CONSIDERATIONS:
+ * - Uses refs to prevent unnecessary re-renders
+ * - Cleanup on unmount to prevent memory leaks
+ * - Efficient audio format detection
+ */
+
 // Audio format detection
 const getAudioFormat = () => {
   const audio = new Audio()
@@ -14,16 +41,21 @@ interface NoteData {
 }
 
 export function usePianoAudio() {
+  // Audio processing nodes
   const sampler = useRef<Tone.Sampler>()
   const reverb = useRef<Tone.Reverb>()
   const compressor = useRef<Tone.Compressor>()
   const eq = useRef<Tone.EQ3>()
+  const stringResonance = useRef<Tone.Gain>()
+  const resonanceDelay = useRef<Tone.FeedbackDelay>()
+  
+  // Track active notes for release timing
   const activeNotes = useRef<Record<string, NoteData>>({})
+  
+  // State management
   const { volume, setIsReady } = useAudioStore()
   const [isLoaded, setIsLoaded] = useState(false)
   const audioFormat = getAudioFormat()
-  const stringResonance = useRef<Tone.Gain>()
-  const resonanceDelay = useRef<Tone.FeedbackDelay>()
 
   useEffect(() => {
     const initSampler = async () => {

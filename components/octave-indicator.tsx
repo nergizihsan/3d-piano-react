@@ -1,5 +1,20 @@
 import { useAudioStore } from "@/stores/audio-store"
 
+/**
+ * OctaveIndicator Component
+ * 
+ * RESPONSIBILITY:
+ * - Displays current octave setting
+ * - Shows keyboard shortcuts for octave control
+ * 
+ * DESIGN DECISIONS:
+ * - Minimal UI with clear visual hierarchy
+ * - Keyboard shortcut hints integrated into display
+ * - Monospace font for numerical display
+ * 
+ * STATE MANAGEMENT:
+ * - Subscribes to audio store for octave updates
+ */
 export function OctaveIndicator() {
   const currentOctave = useAudioStore(state => state.currentOctave)
   

@@ -7,6 +7,28 @@ interface WelcomeModalProps {
   onStart: () => void
 }
 
+/**
+ * WelcomeModal Component
+ * 
+ * RESPONSIBILITY:
+ * - Initial user greeting and audio initialization
+ * - Loading state indication
+ * - Basic usage instructions
+ * 
+ * TECHNICAL CONTEXT:
+ * - Audio initialization required by browsers
+ * - Sample loading status indication
+ * 
+ * UX CONSIDERATIONS:
+ * - Clear loading feedback
+ * - Simple instructions for new users
+ * - Disabled state while samples load
+ * 
+ * DESIGN DECISIONS:
+ * - Backdrop blur for focus
+ * - Loading animation for feedback
+ * - Minimal, focused interface
+ */
 export function WelcomeModal({ isReady, onStart }: WelcomeModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">

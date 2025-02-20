@@ -10,10 +10,29 @@ interface PianoLayoutProps {
   children: React.ReactNode
 }
 
+/**
+ * PianoLayout Component
+ * 
+ * RESPONSIBILITY:
+ * - Provides the main application layout structure
+ * - Manages modal states for settings and shortcuts
+ * - Houses the header with controls and indicators
+ * 
+ * STATE MANAGEMENT:
+ * - Local state for modal visibility
+ * - Handles modal transitions between settings and shortcuts
+ * 
+ * DESIGN DECISIONS:
+ * - Uses flex layout for responsive design
+ * - Implements backdrop blur for depth
+ * - Prevents text selection for better UX
+ */
 export function PianoLayout({ children }: PianoLayoutProps) {
+  // Modal visibility states
   const [showSettings, setShowSettings] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
 
+  // Modal transition handlers
   const handleOpenShortcuts = () => {
     setShowSettings(false)
     setShowShortcuts(true)

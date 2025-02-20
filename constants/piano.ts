@@ -65,6 +65,9 @@ export const PIANO_MATERIALS = {
     METALNESS: 0.2,
     ROUGHNESS: 0.8,
     COLOR: '#ffffff'
+  },
+  PRESSED_KEY: {
+    COLOR: '#ff0000'  // Bright red color for pressed keys
   }
 }
 

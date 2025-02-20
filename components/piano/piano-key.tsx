@@ -1,4 +1,4 @@
-import { useRef, memo } from "react";
+import { useRef, memo, useMemo } from "react";
 import * as THREE from "three";
 import { ThreeEvent } from "@react-three/fiber";
 import { useSpring, animated } from "@react-spring/three";
@@ -6,6 +6,7 @@ import { Text } from "@react-three/drei";
 import { PianoKeyProps } from "@/types/piano";
 import { PIANO_PHYSICS, PIANO_DIMENSIONS } from "@/constants/piano";
 import { useAudioStore } from "@/stores/audio-store";
+import { PIANO_MATERIALS } from "@/constants/piano";
 
 // PianoKey component, memoized to prevent unnecessary re-renders.
 // React.memo() is a higher-order component that memoizes a component.
@@ -28,6 +29,17 @@ export const PianoKey = memo(function PianoKey({
   // When showNoteNames changes, this component will re-render UNLESS it is memoized (as it is here).
   // Because we are using memo, the component will only re-render if the other props (note, type, position, isPressed, onPress, onRelease) change.
   const showNoteNames = useAudioStore((state) => state.showNoteNames);
+
+  const pressedKeyColor = useAudioStore(state => state.pressedKeyColor)
+  
+  const material = useMemo(() => {
+    const baseMaterial = type === 'white' ? PIANO_MATERIALS.WHITE_KEY : PIANO_MATERIALS.BLACK_KEY
+    return new THREE.MeshStandardMaterial({
+      metalness: baseMaterial.METALNESS,
+      roughness: baseMaterial.ROUGHNESS,
+      color: isPressed ? pressedKeyColor : baseMaterial.COLOR
+    })
+  }, [type, isPressed, pressedKeyColor])
 
   // useSpring hook to animate the key press
   const springs = useSpring({
@@ -141,9 +153,7 @@ export const PianoKey = memo(function PianoKey({
           args={[dimensions.width, dimensions.height, dimensions.length]}
         />
         <meshStandardMaterial
-          color={type === "white" ? "#ffffff" : "#1a1a1a"}
-          metalness={0.2}
-          roughness={0.8}
+          {...material}
           shadowSide={THREE.FrontSide}
         />
         {/* Always render text but control visibility */}
