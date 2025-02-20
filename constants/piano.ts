@@ -8,7 +8,7 @@ export const PIANO_DIMENSIONS = {
   },
   BLACK_KEY: {
     WIDTH_RATIO: 0.6,      // Relative to white key width
-    HEIGHT: 0.2,
+    HEIGHT: 0.25,
     LENGTH_RATIO: 0.6,     // Relative to white key length
     OFFSET_RATIO: 0.25,    // How far forward black keys sit
     // New hitbox dimensions
@@ -42,7 +42,7 @@ export const PIANO_CAMERA = {
   MAX_POLAR_ANGLE: Math.PI / 1.8, 
 
   // How close user can zoom in
-  MIN_DISTANCE: 4,  
+  MIN_DISTANCE: 2,  
 
   // How far user can zoom out
   MAX_DISTANCE: 8  

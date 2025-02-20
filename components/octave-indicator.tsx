@@ -8,8 +8,8 @@ export function OctaveIndicator() {
       <span className="text-xs text-gray-400">Octave</span>
       <span className="text-sm font-mono font-bold">{currentOctave}</span>
       <div className="flex gap-1">
-        <kbd className="px-1.5 py-0.5 text-xs font-mono text-white/70 bg-white/10 rounded border border-white/20">,</kbd>
-        <kbd className="px-1.5 py-0.5 text-xs font-mono text-white/70 bg-white/10 rounded border border-white/20">.</kbd>
+        <kbd className="px-1.5 py-0.5 text-xs font-mono text-white/70 bg-white/10 rounded border border-white/20">↓</kbd>
+        <kbd className="px-1.5 py-0.5 text-xs font-mono text-white/70 bg-white/10 rounded border border-white/20">↑</kbd>
       </div>
     </div>
   )

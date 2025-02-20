@@ -1,14 +1,29 @@
+import { useState } from "react"
 import { Controls } from "@/components/controls"
 import { Button } from "@/components/ui/button"
 import { Settings } from "lucide-react"
 import { OctaveIndicator } from "@/components/octave-indicator"
+import { SettingsDialog } from "@/components/settings-dialog"
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts"
 
 interface PianoLayoutProps {
   children: React.ReactNode
-  onOpenShortcuts: () => void
 }
 
-export function PianoLayout({ children, onOpenShortcuts }: PianoLayoutProps) {
+export function PianoLayout({ children }: PianoLayoutProps) {
+  const [showSettings, setShowSettings] = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
+
+  const handleOpenShortcuts = () => {
+    setShowSettings(false)
+    setShowShortcuts(true)
+  }
+
+  const handleBackToSettings = () => {
+    setShowShortcuts(false)
+    setShowSettings(true)
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gradient-to-b from-slate-900 to-black text-white overflow-hidden select-none">
       <header className="container mx-auto px-4 py-4 flex justify-between items-center">
@@ -23,7 +38,7 @@ export function PianoLayout({ children, onOpenShortcuts }: PianoLayoutProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={onOpenShortcuts}
+            onClick={() => setShowSettings(true)}
             className="text-gray-400 hover:text-white"
           >
             <Settings className="h-5 w-5" />
@@ -34,6 +49,18 @@ export function PianoLayout({ children, onOpenShortcuts }: PianoLayoutProps) {
       <div className="flex-1 relative">
         {children}
       </div>
+
+      <SettingsDialog 
+        open={showSettings}
+        onOpenChange={setShowSettings}
+        onOpenShortcuts={handleOpenShortcuts}
+      />
+
+      <KeyboardShortcuts 
+        open={showShortcuts}
+        onOpenChange={setShowShortcuts}
+        onBackToSettings={handleBackToSettings}
+      />
     </div>
   )
 } 

@@ -15,6 +15,8 @@ interface AudioStore {
   clearPressedKeys: () => void
   currentOctave: number
   setCurrentOctave: (octave: number) => void
+  showNoteNames: boolean
+  toggleNoteNames: () => void
 }
 
 export const useAudioStore = create<AudioStore>((set) => ({
@@ -45,6 +47,10 @@ export const useAudioStore = create<AudioStore>((set) => ({
     }
     set({ currentOctave: newOctave })
   },
+  showNoteNames: false,
+  toggleNoteNames: () => set((state) => ({ 
+    showNoteNames: !state.showNoteNames 
+  })),
 }))
 
 // Initialize octave from localStorage in a component

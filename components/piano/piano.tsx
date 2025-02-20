@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { usePianoAudio } from '@/hooks/use-piano-audio'
 import { useAudioStore } from '@/stores/audio-store'
 import { usePianoKeyboard } from '@/hooks/use-piano-keyboard'
@@ -11,7 +11,9 @@ import { generatePianoKeys } from '@/utils/piano-utils'
 export function Piano() {
   const { playNote, releaseNote } = usePianoAudio()
   const { pressedKeys, pressKey, releaseKey } = useAudioStore()
-  const KEYS = generatePianoKeys(PIANO_DIMENSIONS)
+  
+  // Memoize the piano keys generation
+  const KEYS = useMemo(() => generatePianoKeys(PIANO_DIMENSIONS), [])
   
   usePianoKeyboard()
 

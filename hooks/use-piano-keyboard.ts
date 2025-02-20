@@ -47,8 +47,8 @@ const KEY_MAPPINGS = {
   '5': 'A#2',
 
   // Octave Controls
-  ',': 'octave_down',
-  '.': 'octave_up',
+  'arrowdown': 'octave_down',
+  'arrowup': 'octave_up',
 } as const
 
 export function usePianoKeyboard() {

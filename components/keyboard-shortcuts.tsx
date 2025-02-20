@@ -4,6 +4,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft } from "lucide-react"
 
 const PIANO_SHORTCUTS = [
   { key: "Z X C V B N M", description: "Lower octave white keys" },
@@ -12,20 +14,34 @@ const PIANO_SHORTCUTS = [
   { key: "W E T Y U", description: "Middle octave black keys" },
   { key: "K L ; ' \\", description: "Upper octave white keys" },
   { key: "O P ] ", description: "Upper octave black keys" },
-  { key: ", .", description: "Shift octave down/up" },
+  { key: ", . ↑ ↓", description: "Shift octave down/up" },
 ]
 
 interface KeyboardShortcutsProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onBackToSettings: () => void
 }
 
-export function KeyboardShortcuts({ open, onOpenChange }: KeyboardShortcutsProps) {
+export function KeyboardShortcuts({ open, onOpenChange, onBackToSettings }: KeyboardShortcutsProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-slate-900/95 border-white/10 text-white">
         <DialogHeader>
-          <DialogTitle>Keyboard Shortcuts</DialogTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                onOpenChange(false)
+                onBackToSettings()
+              }}
+              className="h-8 w-8 text-gray-400 hover:text-white"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <DialogTitle>Keyboard Shortcuts</DialogTitle>
+          </div>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           {PIANO_SHORTCUTS.map(({ key, description }) => (
