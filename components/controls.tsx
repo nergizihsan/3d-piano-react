@@ -111,7 +111,7 @@ export function Controls() {
 
   return (
     <>
-      <div className="flex items-center gap-2 bg-black/50 backdrop-blur px-4 h-20 rounded-lg select-none border border-2 border-white/30">
+      <div className="flex items-center gap-2 bg-black/50 backdrop-blur px-4 h-18 rounded-lg select-none border border-2 border-white/30">
         <Switch
           checked={isSceneLocked}
           onCheckedChange={toggleSceneLock}

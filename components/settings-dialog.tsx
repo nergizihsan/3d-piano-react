@@ -48,6 +48,8 @@ export function SettingsDialog({ open, onOpenChange, onOpenShortcuts }: Settings
     setVolume, 
     showNoteNames, 
     toggleNoteNames,
+    staffVisible,
+    toggleStaff,
     pressedKeyColor,
     setPressedKeyColor
   } = useAudioStore()
@@ -125,18 +127,34 @@ export function SettingsDialog({ open, onOpenChange, onOpenShortcuts }: Settings
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-white">Show Note Names</span>
-            <Switch
-              checked={showNoteNames}
-              onCheckedChange={toggleNoteNames}
-              className={cn(
-                "data-[state=checked]:bg-blue-500",
-                "data-[state=checked]:hover:bg-blue-400",
-                "bg-white/10",
-                "hover:bg-white/20"
-              )}
-            />
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-white">Show Note Names</span>
+              <Switch
+                checked={showNoteNames}
+                onCheckedChange={toggleNoteNames}
+                className={cn(
+                  "data-[state=checked]:bg-blue-500",
+                  "data-[state=checked]:hover:bg-blue-400",
+                  "bg-white/10",
+                  "hover:bg-white/20"
+                )}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-white">Show Music Staff</span>
+              <Switch
+                checked={staffVisible}
+                onCheckedChange={toggleStaff}
+                className={cn(
+                  "data-[state=checked]:bg-blue-500",
+                  "data-[state=checked]:hover:bg-blue-400",
+                  "bg-white/10",
+                  "hover:bg-white/20"
+                )}
+              />
+            </div>
           </div>
         </div>
       </DialogContent>

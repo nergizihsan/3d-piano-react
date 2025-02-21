@@ -26,6 +26,8 @@ interface AudioStore {
   showNoteNames: boolean
   pressedKeyColor: string
   isSceneLocked: boolean
+  staffVisible: boolean
+  showMiddleOctave: boolean
   
   // Progress State
   progress: number
@@ -43,6 +45,7 @@ interface AudioStore {
   
   toggleNoteNames: () => void
   toggleSceneLock: () => void
+  toggleStaff: () => void
   setPressedKeyColor: (color: string) => void
   setLoadingState: (progress: number, message: string) => void
   
@@ -70,7 +73,7 @@ interface AudioStore {
  *    - Tracks source, velocity, and timestamp
  *    - Prevents cross-source interference
  */
-export const useAudioStore = create<AudioStore>((set, get) => ({
+export const useAudioStore = create<AudioStore>((set) => ({
   // Initial State
   volume: 0.7,
   isReady: false,
@@ -81,7 +84,9 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
   showNoteNames: false,
   pressedKeyColor: '#ff0000',
   isSceneLocked: false,
-  
+  staffVisible: false,
+  showMiddleOctave: true,
+
   // Progress Initial State
   progress: 0,
   currentTime: "0:00",
@@ -160,6 +165,10 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
 
   toggleSceneLock: () => set((state) => ({ 
     isSceneLocked: !state.isSceneLocked 
+  })),
+
+  toggleStaff: () => set((state) => ({ 
+    staffVisible: !state.staffVisible 
   })),
 
   setPressedKeyColor: (color) => {

@@ -244,9 +244,9 @@ export function SongPlayer({ className, onUploadRequest }: SongPlayerProps) {
   };
 
   return (
-    <div className={cn("flex flex-col gap-2 min-w-[300px]", className)}>
+    <div className={cn("flex flex-col gap-1 min-w-[300px]", className)}>
       {/* Song Selection and Controls Row */}
-      <div className="flex items-center gap-2 bg-black/20 p-1 rounded-lg">
+      <div className="flex items-center gap-2 bg-black/20 rounded-lg">
         <div className="flex-shrink-0 w-8 h-8 bg-white/5 rounded-md flex items-center justify-center">
           <Music2 className="w-5 h-5 text-white/50" />
         </div>

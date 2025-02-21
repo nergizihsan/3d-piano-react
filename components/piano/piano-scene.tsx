@@ -2,7 +2,7 @@
 "use client"
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Stage, AdaptiveDpr, AdaptiveEvents } from '@react-three/drei'
+import { OrbitControls, AdaptiveDpr, AdaptiveEvents, Environment } from '@react-three/drei'
 import { Piano } from './piano'
 import { useAudioStore } from '@/stores/audio-store'
 import { WEBGL_SETTINGS, PIANO_CAMERA } from '@/constants/piano'
@@ -28,13 +28,6 @@ import * as THREE from 'three'
 export function PianoScene() {
   const { isSceneLocked } = useAudioStore()
   const [renderer, setRenderer] = useState<THREE.WebGLRenderer | null>(null)
-
-  // Let's create a better initial camera position
-  const initialCameraPosition = new THREE.Vector3(
-    PIANO_CAMERA.INITIAL_POSITION[0],  // x: centered
-    PIANO_CAMERA.INITIAL_POSITION[1],  // y: height above piano
-    PIANO_CAMERA.INITIAL_POSITION[2] * 1.5  // z: 50% further back than default
-  )
 
   // WebGL context loss handling
   useEffect(() => {
@@ -82,32 +75,50 @@ export function PianoScene() {
           ...WEBGL_SETTINGS,
           powerPreference: "high-performance",
           antialias: true,
-          alpha: false, // Disable alpha for better performance
-          stencil: false, // Disable stencil buffer if not needed
+          alpha: false,
+          stencil: false,
           depth: true
         }}
         onCreated={({ gl }) => setRenderer(gl)}
-        dpr={[1, 2]} // Balance between quality and performance
+        dpr={[1, 2]}
         camera={{ 
-          position: initialCameraPosition,
+          position: [0, 3, 6],
           fov: PIANO_CAMERA.FOV,
           near: 0.1,
           far: 1000,
-
         }}
-        performance={{ min: 0.5 }} // Allow frame rate to drop to 30fps before scaling quality
       >
         <AdaptiveDpr pixelated />
         <AdaptiveEvents />
         
         <Suspense fallback={null}>
-          <Stage
-            environment="city"
-            intensity={0.5}
-            adjustCamera={false} // Prevent camera adjustments for better control
-          >
+          <group position={[0, 0, 0]}>
+            <ambientLight intensity={0.5} />
+            <directionalLight 
+              position={[10, 10, 10]} 
+              intensity={0.8} 
+              castShadow
+              shadow-mapSize={[512, 512]}
+              shadow-bias={-0.0001}
+            >
+              <orthographicCamera 
+                attach="shadow-camera"
+                args={[-10, 10, 10, -10, 0.1, 20]}
+              />
+            </directionalLight>
+            <pointLight 
+              position={[0, 5, -5]} 
+              intensity={0.6}
+              distance={20}
+              decay={2}
+            />
+            <Environment 
+              preset="city"
+              resolution={256}
+              frames={Infinity}
+            />
             <Piano />
-          </Stage>
+          </group>
         </Suspense>
 
         <OrbitControls 
@@ -121,7 +132,6 @@ export function PianoScene() {
           maxDistance={PIANO_CAMERA.MAX_DISTANCE}
           enableDamping={true}
           dampingFactor={0.05}
-          // Add target to ensure orbit controls rotate around the piano
           target={new THREE.Vector3(0, 0, 0)}
         />
       </Canvas>

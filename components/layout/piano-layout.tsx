@@ -45,7 +45,7 @@ export function PianoLayout({ children }: PianoLayoutProps) {
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-b from-slate-900 to-black text-white overflow-hidden select-none">
-      <header className="container mx-auto px-4 py-4 flex justify-between items-center">
+      <header className="container mx-auto px-4 py-1 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold">3D Piano</h1>
           <p className="text-sm text-gray-400">
