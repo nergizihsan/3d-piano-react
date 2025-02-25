@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 3D Piano React Application
+
+This is a fun project that I've started. 3D piano application built with React, Next.js, Three.js (implied by the 3D scene), and Tone.js for audio synthesis.
+
+## Project Overview
+
+We render a 3D piano that users can interact with to play music. It initializes audio on user interaction (click, touch, or key press) and provides a visual 3D representation of a piano.
+
+## Project Structure
+
+The project follows a standard Next.js application structure:
+
+- `app/` - Next.js app directory
+  - `page.tsx` - Main entry point of the application
+  - `layout.tsx` - Root layout component
+  - `globals.css` - Global styles
+  
+- `components/` - Reusable React components
+  - `layout/` - Layout-related components
+  - `piano/` - Piano-specific components
+  - `ui/` - General UI components
+
+- `services/` - Service modules for external interactions
+  - `midi-engine/` - Audio processing and management
+
+
+- `public/` - Static assets including:
+  - `models/` - 3D model files
+  - `sounds/` - Audio files
+  - `images/` - Image assets
+
+- `styles/` - CSS modules and styling utilities
+
+- `lib/` - Shared utility functions and helpers
+  
+- `hooks/` - Custom React hooks
+  
+- `stores/` - State management
+
+- `types/` - TypeScript type definitions
+
+- `config/` - Configuration files
+
+## Features
+
+- 3D piano visualization
+- Audio synthesis using Tone.js
+- Responsive design
+- Audio initialization on user interaction
+- Loading indicator
+
+## Technical Stack
+
+- React/Next.js - Frontend framework
+- Tone.js - Audio synthesis
+- Three.js (implied) - 3D rendering
+- Zustand: state management
 
 ## Getting Started
 
-First, run the development server:
+To run this application locally:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Clone the repository
+2. Install dependencies with `npm install` or `yarn`
+3. Start the development server with `npm run dev` or `yarn dev`
+4. Open your browser to `localhost:3000`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Usage
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Click, touch, or press keys to interact with the piano. The audio will initialize on the first interaction.
